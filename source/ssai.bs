@@ -1,0 +1,60 @@
+import "roku_modules/rokurequests/Requests.brs"
+
+class RAFX_SSAI
+    __version__ = "0.0.0"
+    private player
+    private metadata
+
+    sub new()
+        m.__version__ = readAsciiFile("pkg:/version")
+    end sub
+
+    ' param: URL - Live URL w/o sessId query param
+    ' return assocarray:
+    ' - ssai: boolean - True if SSAI is detected, false otherwise
+    ' - streamUrlPath: string | invalid - Personalized stream URL path with session ID. 
+    '                                     Only valid if ssai is true
+    ' - metadata: assocarray | invalid - Ad tracking metadata
+    '                                    Only valid if ssai is true
+    function requestMetadata(url as string) as object
+        result = {
+            ssai: false,
+            streamUrlPath: invalid,
+            metadata: invalid
+        }
+        r = rokurequests_Requests().get(url)
+
+        if r.ok and r.statusCode = 302
+            location = r.headers.location
+            result.ssai = true
+            result.streamUrlPath = location
+            ' Replace file name with word "metadata"
+            metadataUrlPath = /\/[^\/?]+(\\??[^\/]*)$/g.replaceAll(location, "/metadata$1")
+            ' Replace original URL path with metadata URL
+            metadataUrl = /^(?:http(?:s)?):\/\/.+?\/(.+)/ig.replaceAll(url, `$1${metadataUrlPath}`)
+            r = rokurequests_Requests().get(metadataUrl)
+            if r.ok and r.statusCode = 200
+                m.metadata = r.json
+            end if
+        end if
+        return result
+    end function
+
+    sub enableAds(params as object)
+        if type(params["player"]) = "roAssociativeArray"
+            player = params["player"]
+            if player.doesexist("port") and player.doesexist("sgnode")
+                ei = true
+            end if
+            m.player = player
+        end if
+    end sub
+
+    sub onMessage(msg as object)
+    end sub
+
+    private sub setRAFAdPods(adbreaksGiven = invalid as object)
+        
+    end sub
+
+end class
