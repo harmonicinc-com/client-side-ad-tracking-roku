@@ -10,6 +10,7 @@ jobs:
         with:
           node-version: "16.15.1"
       - run: npm ci
+      - run: npm run ropm-ci
       - run: npm run validate
   npm-release:
     #only run this task for version-tagged releases
@@ -25,6 +26,7 @@ jobs:
           node-version: "16.15.1"
       - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ./.npmrc
       - run: npm ci
+      - run: npm run ropm-ci
 
       #create npm package
       - run: npm pack
