@@ -1,60 +1,299 @@
-import "roku_modules/rokurequests/Requests.brs"
+import "pkg:/source/roku_modules/rokurequests/Requests.brs"
+import "MetadataParser.bs"
+import "DashParser.bs"
 
 class RAFX_SSAI
-    __version__ = "0.0.0"
+    __name__ = "harmonic"
+    AdEvent = {
+        PODS: "PodsFound",
+        POD_START: "PodStart",
+        START: "Start",
+        IMPRESSION: "Impression",
+        CREATIVE_VIEW: "creativeView",
+        FIRST_QUARTILE: "FirstQuartile",
+        MIDPOINT: "Midpoint",
+        THIRD_QUARTILE: "ThirdQuartile",
+        COMPLETE: "Complete",
+        POD_END: "PodComplete",
+        STREAM_END: "StreamEnd",
+        ACCEPT_INVITATION: "AcceptInvitation",
+        ERROR: "Error"
+    }
+
+    private msgType = {
+        UNKNOWN: 0,
+        POSITION: 1,
+        METADATA: 2,
+        FINISHED: 3,
+        KEYEVENT: 4
+    }
+
     private player
-    private metadata
+    private metadataUrl
+    private useStitched
+    private callbacks = {}
+    private rafMetadata = {}
+    private metadataParser
+    private dashParser
+    private logLevel = 0
+    private roku_ads
+
+    private PING_INTERVAL_SEC = 4
+    private POD_RETENTION_SEC = 30
+    private lastPingTime = 0
+
+    private adsInProgress = false
 
     sub new()
-        m.__version__ = readAsciiFile("pkg:/version")
+        m.metadataParser = new MetadataParser()
+        m.dashParser = new DashParser()
+        m.roku_ads = Roku_Ads()
     end sub
 
-    ' param: URL - Live URL w/o sessId query param
+    ' param: URL - Live URL w/ sessId query param
     ' return assocarray:
     ' - ssai: boolean - True if SSAI is detected, false otherwise
-    ' - streamUrlPath: string | invalid - Personalized stream URL path with session ID. 
+    ' - streamUrl: string | invalid - Personalized stream URL with session ID. 
     '                                     Only valid if ssai is true
-    ' - metadata: assocarray | invalid - Ad tracking metadata
-    '                                    Only valid if ssai is true
-    function requestMetadata(url as string) as object
+    function getStreamInfo(url as string) as object
         result = {
             ssai: false,
-            streamUrlPath: invalid,
-            metadata: invalid
+            streamUrl: invalid
         }
-        r = rokurequests_Requests().get(url)
 
-        if r.ok and r.statusCode = 302
-            location = r.headers.location
-            result.ssai = true
-            result.streamUrlPath = location
-            ' Replace file name with word "metadata"
-            metadataUrlPath = /\/[^\/?]+(\\??[^\/]*)$/g.replaceAll(location, "/metadata$1")
-            ' Replace original URL path with metadata URL
-            metadataUrl = /^(?:http(?:s)?):\/\/.+?\/(.+)/ig.replaceAll(url, `$1${metadataUrlPath}`)
-            r = rokurequests_Requests().get(metadataUrl)
-            if r.ok and r.statusCode = 200
-                m.metadata = r.json
+        if /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)\/variant/.isMatch(url)
+            ' need to send a manifest request first, or session won't be created
+            manifest = rokurequests_Requests().get(url)
+
+            ' Check if stream is DASH
+            m.dashParser.setManifest(manifest.text)
+            fileExt = /\.(\w{3,4})($|\?)/g.match(url)[1]
+            if m.dashParser.isDash(manifest.headers["content-type"], fileExt)
+                ' Get availability start time if stream is DASH
+                ' For HLS let it be 0, as the startTime returned is already epoch time
+                m.metadataParser.availabilityStartTime = m.dashParser.getAvailabilityStartTime()
             end if
+
+            m.metadataUrl = /\/[^\/?]+(\\??[^\/]*)$/g.replaceAll(url, "/metadata\1")
+            m.rafMetadata = m.requestMetadata()
+            result.ssai = m.rafMetadata <> invalid
+            result.streamUrl = result.ssai ? url : invalid
         end if
+
+        ' r = rokurequests_Requests().get(url)
+        ' if r.ok and r.statusCode = 302
+        '     location = r.headers.location
+        '     result.streamUrl = /^(?:http(?:s)?):\/\/.+?\/(.+)/ig.replaceAll(url, `$1${location}`)
+        '     ' Replace file name with word "metadata"
+        '     metadataUrlPath = /\/[^\/?]+(\\??[^\/]*)$/g.replaceAll(location, "/metadata$1")
+        '     ' Replace original URL path with metadata URL
+        '     m.metadataUrl = /^(?:http(?:s)?):\/\/.+?\/(.+)/ig.replaceAll(url, `$1${metadataUrlPath}`)
+        '     result.ssai = m.requestMetadata()
+        ' end if
         return result
     end function
 
+    function requestMetadata()
+        if m.metadataUrl <> invalid
+            r = rokurequests_Requests().get(m.metadataUrl)
+            if r.ok and r.statusCode = 200 and r.headers?.["content-type"] = "application/json"
+                return m.metadataParser.parseMetadata(r.json)
+            end if
+        end if
+        return invalid
+    end function
+
+    private function findPodById(pods as object, podId as string)
+        for each pod in pods
+            if pod.id = podId
+                return pod
+            end if
+        end for
+        return invalid
+    end function
+
+    sub mergePods(newPods as object)
+        ' Deep clone
+        current = parseJson(formatJson(m.rafMetadata.adBreaks))
+        playhead = m.player.sgNode.position ?? 0
+        adOpportunities = 0
+
+        ' Assume pods are in chronological order
+        for each pod in current
+            if playhead - pod.renderTime < m.POD_RETENTION_SEC
+                newPod = m.findPodById(newPods.adBreaks, pod.id)
+                if newPod <> invalid
+                    ' Old pod. Keep until expired.
+                    if newPod.duration <> pod.duration
+                        pod.duration = newPod.duration
+                    end if
+                    m.mergeAds(pod.ads, newPod.ads)
+                end if
+                adOpportunities += pod.ads.count()
+            else
+                ' Evict expired pods
+                current.shift()
+            end if
+        end for
+
+        for each newPod in newPods.adBreaks
+            podExist = m.findPodById(current, newPod.id)
+            if podExist = invalid
+                current.push(newPod)
+                adOpportunities += newPod.ads.count()
+            end if
+        end for
+
+        m.rafMetadata.adOpportunities = adOpportunities
+        m.rafMetadata.adBreaks = current
+    end sub
+
+    sub mergeAds(oldAds, newAds)
+        for each newAd in newAds
+            adExist = m.findPodById(oldAds, newAd.id)
+            if adExist = invalid
+                oldAds.push(newAd)
+            else 
+                if adExist.duration <> newAd.duration
+                    adExist.duration = newAd.duration
+                end if
+            end if
+        end for
+    end sub
+
+    ' params:
+    ' - player: Player params
+    '   - sgNode: Video node
+    '   - port: Player port
+    ' - useStitched: Adapter will fire the events if true. Client needs to handle the callback if false.
     sub enableAds(params as object)
+        valid = false
         if type(params["player"]) = "roAssociativeArray"
             player = params["player"]
-            if player.doesexist("port") and player.doesexist("sgnode")
-                ei = true
+            if player.doesexist("port") and player.doesexist("sgNode")
+                valid = true
             end if
             m.player = player
         end if
+        m.useStitched = (invalid = params["useStitched"] or params["useStitched"])
+        if m.useStitched
+            ' WIP
+        end if
+
+        if not valid
+            print "Invalid params"
+            return
+        end if
+        m.setRAFAdPods(m.rafMetadata.adBreaks)
     end sub
 
-    sub onMessage(msg as object)
+    function onMessage(msg as object) as object
+        msgType = m.getMsgType(msg, m.player)
+        if msgType = m.msgType.FINISHED
+            m.log("All video is completed - full result")
+            m.doCall(m.AdEvent.STREAM_END, {})
+        else if msgType = m.msgType.METADATA
+            m.log("METADATA")
+            m.onMetadata(msg)
+        else if msgType = m.msgType.POSITION
+            m.onPosition(msg)
+        else if invalid <> msg and msgType = m.msgType.UNKNOWN
+            m.onUnknown(msg)
+        end if
+        curAd = m.msgToRAF(msg)
+        return curAd
+    end function
+
+    sub addEventListener(event as string, callback as function)
+        m.callbacks[event] = callback
     end sub
 
-    private sub setRAFAdPods(adbreaksGiven = invalid as object)
-        
+    private sub onMetadata(msg as object)
+        ' WIP
+    end sub
+
+    private sub onPosition(msg as object)
+        forcePing = false
+        if m.metadataParser.startTime = 0 and m.player.sgNode.positioninfo.video > 0 and m.player.sgNode.position > 0
+            m.metadataParser.startTime = m.player.sgNode.positioninfo.video - m.player.sgNode.position
+            forcePing = true
+        end if
+        currentTime = createObject("roDateTime").AsSeconds()
+        if (forcePing or (currentTime - m.lastPingTime > m.PING_INTERVAL_SEC)) and not m.adsInProgress
+            newAds = m.requestMetadata()
+            m.mergePods(newAds)
+            m.setRAFAdPods(m.rafMetadata.adBreaks)
+            m.lastPingTime = currentTime
+        end if
+    end sub
+
+    private sub onUnknown(msg as object)
+    end sub
+
+    private function msgToRAF(msg as object)
+        if m.useStitched
+            ads = m.roku_ads.stitchedAdHandledEvent(msg, m.player)
+            m.adsInProgress = ads <> invalid
+            m.doCall(m.AdEvent.PODS, { event: m.AdEvent.PODS, adPods: m.rafMetadata.adBreaks })
+            return ads
+        end if
+        return invalid
+    end function
+
+    private sub doCall(event as string, adInfo as object)
+        if m.callbacks[event] <> invalid
+            func = m.funcCall
+            func(m.callbacks[event], adInfo)
+        end if
+    end sub
+
+    private sub funcCall(dd as function, ue as object) as void
+        dd(ue)
+    end sub
+
+    private function getMsgType(msg as object, player as object) as integer
+        nodeId = player.sgNode.id
+        if "roSGNodeEvent" = type(msg)
+            xg = msg.getField()
+            if nodeId = msg.getNode()
+                if xg = "position"
+                    return m.msgType.POSITION
+                else if xg.left(13) = "timedMetaData"
+                    return m.msgType.METADATA
+                else if xg = "state"
+                    if msg.getData() = "finished"
+                        return m.msgType.FINISHED
+                    end if
+                end if
+            else
+                if xg = "keypressed"
+                    return m.msgType.KEYEVENT
+                end if
+            end if
+        end if
+        return m.msgType.UNKNOWN
+    end function
+
+    private sub setRAFAdPods(adBreaks as object)
+        if adBreaks <> invalid and 0 < adBreaks.count()
+            if m.useStitched
+                m.roku_ads.stitchedAdsInit(adBreaks)
+                m.log("setRAFAdPods() adBreaks set to RAF.")
+            end if
+            m.doCall(m.AdEvent.PODS, { event: m.AdEvent.PODS, adPods: adBreaks })
+        end if
+    end sub
+
+    private sub log(x, logLevel = -1 as integer)
+        if logLevel < m.logLevel
+            ddttm = createObject("roDateTime")
+            dtm = ["Harmonic_RAFX_SSAI (", ddttm.toISOString().split("T")[1], " ", ddttm.getMilliseconds().tostr(), "): "].join("")
+            if "roArray" = type(x)
+                print dtm; x.join("")
+            else
+                print dtm; x
+            end if
+        end if
     end sub
 
 end class

@@ -13,7 +13,8 @@
   },
   "devDependencies": {
     "@rokucommunity/bslint": "^0.8.4",
-    "brighterscript": "^0.64.3"
+    "brighterscript": "^0.64.3",
+    "ropm": "^0.10.14"
   },
   "author": "Enson Choy",
   "license": "MIT",

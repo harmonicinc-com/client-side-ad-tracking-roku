@@ -1,0 +1,32 @@
+class DashParser
+    private manifestString
+    private mpd
+    private mpdValid = false
+
+    sub setManifest(manifest)
+        m.manifestString = manifest
+        m.mpdValid = m.parseXml(manifest)
+    end sub
+
+    function isDash(mimeType as string, extension as string) as boolean
+        dashMimeType = "application/dash+xml"
+        dashExtension = "mpd"
+        return (dashMimeType = mimeType or dashExtension = extension) and m.mpdValid = true
+    end function
+
+    function getAvailabilityStartTime() as dynamic
+        if m.mpdValid = true and m.mpd.hasAttribute("availabilityStartTime")
+            startTimeStr = m.mpd.getAttributes().availabilityStartTime
+            startTime = createObject("roDateTime")
+            startTime.fromISO8601String(startTimeStr)
+            return startTime.AsSeconds()
+        end if
+        return invalid
+    end function
+
+    private function parseXml(str as string) as dynamic
+        if str = invalid then return invalid  'if the response is invalid, return invalid
+        m.mpd = CreateObject("roXMLElement") '
+        return m.mpd.Parse(str)
+    end function
+end class

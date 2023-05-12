@@ -1,0 +1,77 @@
+class MetadataParser
+    startTime = 0
+    availabilityStartTime = 0
+
+    function parseMetadata(metadata)
+        result = {
+            adOpportunities: 0,
+            adBreaks: []
+        }
+        if metadata <> invalid
+            adOpportunities = 0
+            rafBreaks = []
+            if metadata.adBreaks <> invalid
+                for each pod in metadata.adBreaks
+                    adBreak = {
+                        viewed: false,
+                        renderTime: 0.0,
+                        renderSequence: "",
+                        duration: 0.0,
+                        tracking: [],
+                        ads: [],
+                        id: ""
+                    }
+                    adBreak.duration = pod.duration / 1000
+                    adBreak.renderSequence = "midroll"
+                    adBreak.renderTime = m.availabilityStartTime + (pod.startTime / 1000) - m.startTime
+                    adBreak.id = pod.id
+                    if m.startTime = 0 or adBreak.renderTime < 0
+                        ' Invalid ads. Skip
+                        continue for
+                    end if
+                    if pod["ads"] <> invalid
+                        m.parseAds(adBreak, pod.ads)
+                    end if
+                    if 0 < adBreak.ads.count()
+                        rafBreaks.push(adBreak)
+                        adOpportunities += adBreak.ads.count()
+                    end if
+                end for
+                result.adOpportunities = adOpportunities
+                result.adBreaks = rafBreaks
+            end if
+        end if
+        return result
+    end function
+
+    sub parseAds(adBreak as object, srcAds as object)
+        for each ad in srcAds
+            rafAd = {
+                duration: ad.duration / 1000,
+                streamFormat: "",
+                adServer: "",
+                streams: [],
+                tracking: [],
+                id: ad.id
+            }
+            if ad["trackingEvents"] <> invalid
+                m.parseEvents(rafAd.tracking, ad.trackingEvents)
+            end if
+            adBreak.ads.push(rafAd)
+        end for
+    end sub
+
+    sub parseEvents(tracking as object, events as object)
+        for each event in events
+            rafEvent = {
+                event: event.event,
+                url: event.signalingUrls[0],
+                triggered: false
+            }
+            if event["startTime"] <> invalid
+                rafEvent.time = m.availabilityStartTime + (event.startTime / 1000) - m.startTime
+            end if
+            tracking.push(rafEvent)
+        end for
+    end sub
+end class
