@@ -2,13 +2,12 @@
   "ropm": {
     "packageRootDir": "./"
   },
-  "name": "harmonic_rafx_ssai",
+  "name": "@harmonicinc/vos-roku-rafx-ssai",
   "version": "1.0.0",
-  "description": "Harmonic RAFX SSAI adapter for Roku apps",
+  "description": "Harmonic VOS RAFX SSAI adapter for Roku apps",
   "main": "index.js",
   "scripts": {
     "ropm-ci": "ropm install",
-    "preversion": "npm run validate",
     "validate": "bsc --create-package=false --copy-to-staging=false",
     "build": "bsc"
   },
