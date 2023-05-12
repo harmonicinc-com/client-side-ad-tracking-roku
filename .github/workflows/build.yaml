@@ -31,25 +31,5 @@ jobs:
       #create npm package
       - run: npm pack
 
-      #create GitHub release
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-      #upload package to GitHub release
-      - name: Upload GitHub Release Assets
-        uses: alexellis/upload-assets@0.2.3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          asset_paths: '["./*.tgz"]'
-
       #upload to npm
       - run: npm publish
