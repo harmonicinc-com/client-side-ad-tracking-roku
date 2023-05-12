@@ -2,7 +2,7 @@
   "ropm": {
     "packageRootDir": "./"
   },
-  "name": "@harmonicinc/vos-roku-rafx-ssai",
+  "name": "@harmonicinc/vos_roku_rafx_ssai",
   "version": "1.0.0",
   "description": "Harmonic VOS RAFX SSAI adapter for Roku apps",
   "main": "index.js",

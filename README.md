@@ -18,7 +18,7 @@ bsc
 ### ropm (highly recommended)
 [ropm](https://github.com/rokucommunity/ropm) package manager is supported. Install it by
 ```
-ropm install harmonic_rafx_ssai
+ropm install @harmonicinc/vos_roku_rafx_ssai
 ```
 
 ### Manual install
@@ -29,7 +29,7 @@ Install [roku-requests](https://github.com/rokucommunity/roku-requests) by follo
 1. Create a new player task. It should be launched by another UI logic script.
 1. Import required libraries
    ```
-   import "pkg:/source/roku_modules/harmonic_rafx_ssai/SSAI.bs"
+   import "pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/ssai.bs"
    library "Roku_Ads.brs"
    ```
 1. Create Harmonic RAFX adapter by 
