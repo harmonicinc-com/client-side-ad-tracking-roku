@@ -4,6 +4,7 @@ sub init()
     m.video.enableLiveAvailabilityWindow = true
     m.video.content = CreateObject("roSGNode", "ContentNode")
     m.video.content.live = true
+    m.video.content.playStart = 2147483647 ' Workaround Roku player doesn't jump to live edge
 
     ' Init ad beaconing overlay
     m.adBeaconOverlay = CreateObject("roSGNode", "AdBeaconOverlay")

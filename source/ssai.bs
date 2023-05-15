@@ -37,10 +37,13 @@ class RAFX_SSAI
     private dashParser
     private logLevel = 0
     private roku_ads
+    private lastPingTime = 0
+    private lastDataStartTime = 0
+    private lastDataEndTime = 0
 
     private PING_INTERVAL_SEC = 4
     private POD_RETENTION_SEC = 30
-    private lastPingTime = 0
+    private EARLY_FETCH_SEC = 5
 
     private adsInProgress = false
 
@@ -53,7 +56,7 @@ class RAFX_SSAI
     ' param: URL - Live URL w/ sessId query param
     ' return assocarray:
     ' - ssai: boolean - True if SSAI is detected, false otherwise
-    ' - streamUrl: string | invalid - Personalized stream URL with session ID. 
+    ' - streamUrl: string | invalid - Personalized stream URL with session ID.
     '                                     Only valid if ssai is true
     function getStreamInfo(url as string) as object
         result = {
@@ -95,8 +98,14 @@ class RAFX_SSAI
 
     function requestMetadata()
         if m.metadataUrl <> invalid
-            r = rokurequests_Requests().get(m.metadataUrl)
-            if r.ok and r.statusCode = 200 and r.headers?.["content-type"] = "application/json"
+            url = not m.timeInRange() ? `${m.metadataUrl}&start=${m.getMpdTime() * 1000}` : m.metadataUrl
+            print url
+            r = rokurequests_Requests().get(url)
+            if r.ok and r.statusCode = 200 and r.headers?.["content-type"] = "application/json" and r.json <> invalid
+                if r.json.dataRange <> invalid
+                    m.lastDataStartTime = r.json.dataRange.start / 1000
+                    m.lastDataEndTime = r.json.dataRange.end / 1000
+                end if
                 return m.metadataParser.parseMetadata(r.json)
             end if
         end if
@@ -153,7 +162,7 @@ class RAFX_SSAI
             adExist = m.findPodById(oldAds, newAd.id)
             if adExist = invalid
                 oldAds.push(newAd)
-            else 
+            else
                 if adExist.duration <> newAd.duration
                     adExist.duration = newAd.duration
                 end if
@@ -193,7 +202,6 @@ class RAFX_SSAI
             m.log("All video is completed - full result")
             m.doCall(m.AdEvent.STREAM_END, {})
         else if msgType = m.msgType.METADATA
-            m.log("METADATA")
             m.onMetadata(msg)
         else if msgType = m.msgType.POSITION
             m.onPosition(msg)
@@ -212,18 +220,45 @@ class RAFX_SSAI
         ' WIP
     end sub
 
+    private function getMpdTime() as longinteger
+        time = createObject("roLongInteger")
+        playheadEpochTime = createObject("roDateTime").AsSeconds()
+        if m.player?.sgNode?.positioninfo?.video ?? 0 > 0
+            playheadEpochTime = m.player.sgNode.positioninfo.video
+        end if
+        time.setLongInt(playheadEpochTime - (m.metadataParser?.availabilityStartTime ?? 0))
+        return time
+    end function
+
+    private function timeInRange() as boolean
+        ' Convert current time to mpd time
+        ' For HLS no need to convert (availabilityStartTime = 0 so still obtain epoch time)
+        playheadMpdTime = m.getMpdTime()
+        return m.lastDataStartTime < playheadMpdTime and playheadMpdTime < (m.lastDataEndTime - m.EARLY_FETCH_SEC)
+    end function
+
+    ' Criteria to trigger metadata fetch
+    ' - Ads not playing (as mutating the pods will trigger Roku to refire all events), AND
+    ' - m.metadataParser.startTime = 0 (first fetch only), OR
+    ' - m.PING_INTERVAL_SEC passed since last fetch, OR
+    ' - Scrubbed (metadata outdated)
     private sub onPosition(msg as object)
         forcePing = false
-        if m.player.sgNode.positioninfo.video > 0 and m.player.sgNode.position > 0
+        if m.metadataParser.startTime = 0 and m.player.sgNode.positioninfo.video > 0 and m.player.sgNode.position > 0
             m.metadataParser.startTime = m.player.sgNode.positioninfo.video - m.player.sgNode.position
+            forcePing = true
+        else if not m.timeInRange()
             forcePing = true
         end if
         currentTime = createObject("roDateTime").AsSeconds()
         if (forcePing or (currentTime - m.lastPingTime > m.PING_INTERVAL_SEC)) and not m.adsInProgress
             newAds = m.requestMetadata()
-            m.mergePods(newAds)
-            m.setRAFAdPods(m.rafMetadata.adBreaks)
-            m.lastPingTime = currentTime
+            ' Ads are invalid if playhead is outside time range
+            if newAds <> invalid
+                m.mergePods(newAds)
+                m.setRAFAdPods(m.rafMetadata.adBreaks)
+                m.lastPingTime = currentTime
+            end if
         end if
     end sub
 
