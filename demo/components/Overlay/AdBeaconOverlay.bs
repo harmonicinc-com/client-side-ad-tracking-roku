@@ -1,0 +1,137 @@
+sub init()
+    m.podGroup = m.top.findNode("podGroup")
+    m.position = m.top.findNode("position")
+    m.timeToNextAd = m.top.findNode("timeToNextAd")
+    m.currentPod = m.top.findNode("currentPod")
+    m.currentPodStartTime = m.top.findNode("currentPodStartTime")
+    m.currentPodEndTime = m.top.findNode("currentPodEndTime")
+    m.currentPodDuration = m.top.findNode("currentPodDuration")
+    m.currentAd = m.top.findNode("currentAd")
+    m.currentAdStartTime = m.top.findNode("currentAdStartTime")
+    m.currentAdEndTime = m.top.findNode("currentAdEndTime")
+    m.currentAdDuration = m.top.findNode("currentAdDuration")
+    m.events = m.top.findNode("events")
+    m.eventStartTimes = m.top.findNode("eventStartTimes")
+
+    m.positionObserved = false
+    m.POD_ENDTIME_TOLERANCE_SEC = 0
+end sub
+
+sub onVideoNodeUpdated()
+    if not m.positionObserved and m.top.video <> invalid
+        m.top.video.observeFieldScoped("position", "onPositionUpdated")
+        m.positionObserved = true
+    end if
+end sub
+
+' By default fired every 500ms
+sub onPositionUpdated()
+    position = m.top.video.position
+    nullText = "-"
+    m.position.text = formatTwoDigitFloat(position)
+    if m.top.pods <> invalid and m.top.pods.count() > 0
+        nextPod = getCurrentPod()
+        if nextPod = invalid
+            ' Reset all text
+            m.timeToNextAd.text = nullText
+            m.currentPod.text = nullText
+            m.currentPodStartTime.text = nullText
+            m.currentPodDuration.text = nullText
+            m.currentPodEndTime.text = nullText
+            m.currentAd.text = nullText
+            m.currentAdStartTime.text = nullText
+            m.currentAdEndTime.text = nullText
+            m.currentAdDuration.text = nullText
+            m.events.content = invalid
+            m.eventStartTimes.content = invalid
+        else
+            timeToNextAd = nextPod.renderTime - position
+            m.timeToNextAd.text = timeToNextAd < 0 ? "Playing" : `${formatTwoDigitFloat(timeToNextAd)}s`
+
+            m.currentPod.text = nextPod.id
+            m.currentPodStartTime.text = `${formatTwoDigitFloat(nextPod.renderTime)}s`
+            m.currentPodEndTime.text = `${formatTwoDigitFloat(nextPod.renderTime + nextPod.duration)}s`
+            m.currentPodDuration.text = `${formatTwoDigitFloat(nextPod.duration)}s`
+
+            currentAd = getCurrentAd(nextPod)
+            if currentAd <> invalid
+                m.currentAd.text = currentAd.id
+                m.currentAdStartTime.text = `${formatTwoDigitFloat(currentAd.renderTime)}s`
+                m.currentAdEndTime.text = `${formatTwoDigitFloat(currentAd.endTime)}s`
+                m.currentAdDuration.text = `${formatTwoDigitFloat(currentAd.duration)}s`
+                eventTriggerList = []
+                m.events.content = createObject("roSGNode", "ContentNode")
+                m.eventStartTimes.content = createObject("roSGNode", "ContentNode")
+                for each event in currentAd.tracking
+                    eventNode = m.events.content.createChild("ContentNode")
+                    eventNode.title = event.event
+                    eventTriggerList.push(event.triggered)
+
+                    eventStartTimeNode = m.eventStartTimes.content.createChild("ContentNode")
+                    eventStartTimeNode.title = `${formatTwoDigitFloat(event.time)}s`
+                end for
+                m.events.checkedState = eventTriggerList
+            else
+                ' Reset ad info
+                m.currentAd.text = nullText
+                m.currentAdStartTime.text = nullText
+                m.currentAdEndTime.text = nullText
+                m.currentAdDuration.text = nullText
+                m.events.content = invalid
+                m.eventStartTimes.content = invalid
+                m.events.checkedState = []
+            end if
+        end if
+
+    end if
+end sub
+
+sub onAdPodsUpdated()
+    m.podGroup.visible = m.top.pods <> invalid and m.top.pods.count() > 0
+end sub
+
+' Current pod includes next pod
+function getCurrentPod()
+    currentPod = invalid
+    if m.top.pods <> invalid and m.top.pods.count() > 0 and m.top.video <> invalid
+        position = m.top.video.position
+        for each pod in m.top.pods
+            endTime = pod.renderTime + pod.duration + m.POD_ENDTIME_TOLERANCE_SEC
+            if position < endTime
+                currentPod = pod
+                exit for
+            end if
+        end for
+    end if
+    return currentPod
+end function
+
+function getCurrentAd(pod)
+    currentAd = invalid
+    prevAdStartTime = pod.renderTime
+    position = m.top.video.position
+    for each ad in pod.ads
+        adEndTime = prevAdStartTime + ad.duration
+        if prevAdStartTime < position and position < adEndTime
+            currentAd = ad
+            currentAd.renderTime = prevAdStartTime
+            currentAd.endTime = adEndTime
+            exit for
+        end if
+        prevAdStartTime += ad.duration
+    end for
+    return currentAd
+end function
+
+function geNextPod()
+    return 0
+end function
+
+function formatTwoDigitFloat(val as dynamic) as string
+    v = Int((val + .005) * 100)
+    units = int(v / 100)
+    decimal = v mod 100
+    d = decimal.ToStr()
+    if decimal < 10 then d = "0" + d
+    return units.ToStr() + "." + d
+end function

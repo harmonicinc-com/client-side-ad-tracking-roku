@@ -1,0 +1,19 @@
+# Copyright (c) 2023 Harmonic Inc. All rights reserved.
+
+# Channel Details
+title=Harmonic VOS RAFX Demo
+major_version=1
+minor_version=0
+build_version=1
+
+mm_icon_focus_hd=pkg:/images/app_icon.png
+
+# Resolution
+ui_resolutions=fhd
+
+# DRM settings
+requires_widevine_drm=1
+requires_widevine_version=1.0
+
+# Ads library
+bs_libs_required=roku_ads_lib

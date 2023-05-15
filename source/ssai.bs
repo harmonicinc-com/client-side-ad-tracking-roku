@@ -214,7 +214,7 @@ class RAFX_SSAI
 
     private sub onPosition(msg as object)
         forcePing = false
-        if m.metadataParser.startTime = 0 and m.player.sgNode.positioninfo.video > 0 and m.player.sgNode.position > 0
+        if m.player.sgNode.positioninfo.video > 0 and m.player.sgNode.position > 0
             m.metadataParser.startTime = m.player.sgNode.positioninfo.video - m.player.sgNode.position
             forcePing = true
         end if

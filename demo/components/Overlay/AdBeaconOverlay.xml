@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!-- This component is optional. It's for showing the status of each beacon (pending/done) -->
+
+<component name="AdBeaconOverlay" extends="Group">
+    <interface>
+        <field id="pods" type="array" onChange="onAdPodsUpdated" />
+        <field id="video" type="Node" onChange="onVideoNodeUpdated" />
+    </interface>
+    <script type="text/brightscript" uri="AdBeaconOverlay.bs" />
+    <children>
+        <rectangle height="1050" width="500" color="0x00000088" translation="[1405,15]">
+            <!-- Raw player position -->
+            <Label text="Raw player position: " font="font:SmallestSystemFont" translation="[10,10]" width="300" wrap="true" />
+            <Label id="position" text="-" font="font:SmallestBoldSystemFont" translation="[280,10]" width="200" horizAlign="right" />
+            <Label text="s" font="font:SmallestBoldSystemFont" translation="[480,10]" horizAlign="right" />
+
+            <Group id="podGroup" visible="false">
+                <!-- Time to next ad -->
+                <Label text="Time to next ad break: " font="font:SmallestSystemFont" translation="[10,50]" width="350" wrap="true" />
+                <Label id="timeToNextAd" text="-" font="font:SmallestBoldSystemFont" translation="[295,50]" width="200" horizAlign="right" />
+
+                <!-- Current pod -->
+                <Label text="Current pod:" font="font:SmallestSystemFont" translation="[10,130]" width="200" />
+                <Label id="currentPod" text="-" font="font:SmallestBoldSystemFont" translation="[290,130]" width="200" horizAlign="right" />
+                <!-- Current pod start, end & duration -->
+                <Label text="Start:" font="font:SmallestSystemFont" translation="[10,170]" width="200" />
+                <Label id="currentPodStartTime" text="-" font="font:SmallestBoldSystemFont" translation="[30,170]" width="200" horizAlign="right" />
+                <Label text="Duration:" font="font:SmallestSystemFont" translation="[250,170]" width="150" />
+                <Label id="currentPodDuration" text="-" font="font:SmallestBoldSystemFont" translation="[290,170]" width="200" horizAlign="right" />
+                <Label text="End:" font="font:SmallestSystemFont" translation="[10,210]" width="200" />
+                <Label id="currentPodEndTime" text="-" font="font:SmallestBoldSystemFont" translation="[30,210]" width="200" horizAlign="right" />
+
+                <!-- Current ad -->
+                <Label text="Current ad:" font="font:SmallestSystemFont" translation="[10,290]" width="200" />
+                <Label id="currentAd" text="-" font="font:SmallestBoldSystemFont" translation="[290,290]" width="200" horizAlign="right" />
+                <!-- Current ad time & duration -->
+                <Label text="Time:" font="font:SmallestSystemFont" translation="[10,330]" width="150" />
+                <Label id="currentAdStartTime" text="-" font="font:SmallestBoldSystemFont" translation="[30,330]" width="200" horizAlign="right" />
+                <Label text="Duration:" font="font:SmallestSystemFont" translation="[250,330]" width="150" />
+                <Label id="currentAdDuration" text="-" font="font:SmallestBoldSystemFont" translation="[290,330]" width="200" horizAlign="right" />
+                <Label text="End:" font="font:SmallestSystemFont" translation="[10,370]" width="200" />
+                <Label id="currentAdEndTime" text="-" font="font:SmallestBoldSystemFont" translation="[30,370]" width="200" horizAlign="right" />
+
+                <!-- Tracking events -->
+                <CheckList id="events" focusable="false" translation="[10,450]" font="font:SmallestSystemFont" />
+                <LabelList id="eventStartTimes" focusable="false" translation="[380,450]" font="font:SmallestSystemFont" />
+            </Group>
+        </rectangle>
+    </children>
+</component>

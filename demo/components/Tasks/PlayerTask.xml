@@ -1,0 +1,13 @@
+<?xml version = "1.0" encoding = "utf-8" ?>
+<!-- Copyright 2023 Harmonic Inc.  All Rights Reserved. -->
+
+<component name = "playerTask" extends = "Task">
+    <interface>
+        <field id="video" type="Node" />
+        <field id="errors" type="stringarray" />
+        <field id="adExited" type="boolean" />
+        <field id="adPods" type="array" />
+    </interface>
+
+    <script type = "text/brightscript" uri="./PlayerTask.bs" />
+</component>

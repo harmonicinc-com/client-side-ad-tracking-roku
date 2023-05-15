@@ -1,0 +1,5 @@
+{
+    "ignores": [
+        "source/roku_modules/**/*"
+    ]
+}

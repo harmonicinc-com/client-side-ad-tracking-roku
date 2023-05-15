@@ -1,0 +1,26 @@
+{
+  "ropm": {
+    "rootDir": "./"
+  },
+  "name": "vos_rafx_demo",
+  "version": "1.0.0",
+  "description": "Harmonic VOS RAFX SSAI demo app",
+  "main": "index.js",
+  "scripts": {
+    "preversion": "npm run validate",
+    "validate": "bsc --create-package=false --copy-to-staging=false",
+    "lint": "bslint --fix",
+    "build": "bsc --create-package false",
+    "watch": "bsc --watch --create-package false",
+    "package": "bsc"
+  },
+  "author": "Enson Choy",
+  "license": "MIT",
+  "devDependencies": {
+    "@rokucommunity/bslint": "^0.8.5",
+    "brighterscript": "^0.64.4"
+  },
+  "dependencies": {
+    "@harmonicinc/vos_roku_rafx_ssai": "^0.0.2"
+  }
+}

@@ -1,0 +1,31 @@
+sub init()
+    m.video = m.top.findNode("video")
+    m.video.setFocus(true)
+    m.video.enableLiveAvailabilityWindow = true
+    m.video.content = CreateObject("roSGNode", "ContentNode")
+    m.video.content.live = true
+
+    ' Init ad beaconing overlay
+    m.adBeaconOverlay = CreateObject("roSGNode", "AdBeaconOverlay")
+    m.adBeaconOverlay.video = m.video
+    m.video.AppendChild(m.adBeaconOverlay)
+
+    ' Start player task
+    m.playerTask = createObject("roSGNode", "PlayerTask")
+    m.playerTask.video = m.video
+    m.playerTask.control = "run"
+    m.playerTask.observeField("adExited", "onAdExited")
+    m.playerTask.observeField("adPods", "onAdPodsUpdated")
+end sub
+
+sub onAdPodsUpdated()
+    if m.adBeaconOverlay <> invalid
+        m.adBeaconOverlay.pods = m.playerTask.adPods
+    end if
+end sub
+
+' Invoked when back button was pressed during ads
+sub onAdExited()
+    ' Do your stuff here
+    m.video.setFocus(true)
+end sub

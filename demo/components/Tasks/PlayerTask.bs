@@ -1,0 +1,104 @@
+import "pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/ssai.bs"
+library "Roku_Ads.brs"
+const url = "https://manifest-jigsaw-echoy-01.nebula.video/variant/v1/csab/DASH_DASH-1hDVR/Live/channel(478700db-28cc-f1cb-9ed6-e20b0e121c61)/manifest.mpd?sessid=f16220a6-da79-4c48-9155-021e2c8e0041"
+' const url = "https://manifest-jigsaw-echoy-01.nebula.video/variant/v1/csab/DASH/Live/channel(478700db-28cc-f1cb-9ed6-e20b0e121c61)/manifest.mpd?sessid=495709b6-05dd-4eae-bb5e-301c76bb0b1d"
+
+sub init()
+    m.top.adExited = false
+    m.top.functionName = "runTask"
+    m.top.adPods = []
+    m.ssai = false
+end sub
+
+sub runTask()
+    adapter = loadAdapter()
+    loadStream(adapter)
+    runLoop(adapter)
+end sub
+
+function loadAdapter()
+    adapter = new harmonicinc.vos.roku.rafx.ssai.RAFX_SSAI()
+    return adapter
+end function
+
+sub loadStream(adapter as Object)
+    if adapter = invalid then return
+    result = adapter.getStreamInfo(url)
+    ' result = adapter.getStreamInfo("https://manifest-jigsaw-echoy-01.nebula.video/variant/v1/csab/DASH/Live/channel(478700db-28cc-f1cb-9ed6-e20b0e121c61)/manifest.mpd?sessid=495709b6-05dd-4eae-bb5e-301c76bb0b1d")
+    ' result = adapter.getStreamInfo("https://manifest-jigsaw-echoy-01.nebula.video/variant/v1/csab/HLS/Live/channel(478700db-28cc-f1cb-9ed6-e20b0e121c61)/variant.m3u8?sessid=8108cfdb-09e7-4cca-8ee3-f76faf1bab15")
+    ' result = adapter.getStreamInfo("https://cdn-vos-ppp-01.vos360.video/Content/DASH_DASHCLEAR/Live/channel(PPP-LL-2DASH)/master.mpd")
+    if result.ssai
+        m.ssai = true
+        m.top.video.content.url = result.streamUrl
+    end if
+end sub
+
+sub runLoop(adapter as Object)
+    if adapter = invalid or not m.ssai
+        m.top.video.control = "play"
+        return
+    end if
+
+    addCallbacks(adapter)
+
+    port = CreateObject("roMessagePort")
+    adapter.enableAds({
+        player: {
+            sgNode: m.top.video,
+            port: port
+        },
+        useStitched: true
+    })
+
+    m.top.video.observeFieldScoped("position", port)
+    m.top.video.observeFieldScoped("control", port)
+    m.top.video.observeFieldScoped("state", port)
+
+    ' Play video
+    m.top.video.control = "play"
+    
+    while true
+        msg = wait(1000, port)
+        if type(msg) = "roSGNodeEvent" and msg.getField() = "control" and msg.getNode() = m.top.video.id and msg.getData() = "stop" or m.top.video = invalid
+            exit while
+        end if
+        
+        curAd = adapter.onMessage(msg)
+        if curAd = invalid
+            m.top.video.setFocus(true)
+        end if
+        m.top.adExited = curAd?.adExited ?? false
+
+        if "roSGNodeEvent" = type(msg) and "state" = msg.getField() and "finished" = msg.getData() and msg.getNode() = m.top.video.id
+            exit while
+        end if
+    end while
+
+    m.top.video.unobserveFieldScoped("position")
+    m.top.video.unobserveFieldScoped("control")
+    m.top.video.unobserveFieldScoped("state")
+end sub
+
+sub addCallbacks(adapter as object)
+    adapter.addEventListener(adapter.AdEvent.PODS, podsCallback)
+    adapter.addEventListener(adapter.AdEvent.POD_START, podStartCallback)
+    adapter.addEventListener(adapter.AdEvent.IMPRESSION, adEventCallback)
+    adapter.addEventListener(adapter.AdEvent.FIRST_QUARTILE, adEventCallback)
+    adapter.addEventListener(adapter.AdEvent.MIDPOINT, adEventCallback)
+    adapter.addEventListener(adapter.AdEvent.THIRD_QUARTILE, adEventCallback)
+    adapter.addEventListener(adapter.AdEvent.COMPLETE, adEventCallback)
+    adapter.addEventListener(adapter.AdEvent.POD_END, podEndCallback)
+end sub
+
+sub podsCallback(event as object)
+    m.top.adPods = event.adPods
+end sub
+
+sub podStartCallback()
+end sub
+
+sub adEventCallback()
+end sub
+
+sub podEndCallback()
+end sub
