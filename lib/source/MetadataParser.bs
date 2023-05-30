@@ -1,6 +1,6 @@
 class MetadataParser
-    startTime = 0
-    availabilityStartTime = 0
+    startTime = createObject("roLongInteger")
+    availabilityStartTime = createObject("roLongInteger")
 
     function parseMetadata(metadata)
         result = {
@@ -23,7 +23,9 @@ class MetadataParser
                     }
                     adBreak.duration = pod.duration / 1000
                     adBreak.renderSequence = "midroll"
-                    adBreak.renderTime = m.availabilityStartTime + (pod.startTime / 1000) - m.startTime
+                    podStart = createObject("roLongInteger")
+                    podStart.setLongInt(pod.startTime / 1000)
+                    adBreak.renderTime = m.availabilityStartTime + podStart - m.startTime
                     adBreak.id = pod.id
                     if m.startTime = 0 or adBreak.renderTime < 0
                         ' Invalid ads. Skip
@@ -69,7 +71,9 @@ class MetadataParser
                 triggered: false
             }
             if event["startTime"] <> invalid
-                rafEvent.time = m.availabilityStartTime + (event.startTime / 1000) - m.startTime
+                eventStart = createObject("roLongInteger")
+                eventStart.setLongInt(event.startTime / 1000)
+                rafEvent.time = m.availabilityStartTime + eventStart - m.startTime
             end if
             tracking.push(rafEvent)
         end for

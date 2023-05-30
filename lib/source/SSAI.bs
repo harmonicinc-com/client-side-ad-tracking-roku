@@ -74,7 +74,7 @@ class RAFX_SSAI
             if m.dashParser.isDash(manifest.headers["content-type"], fileExt)
                 ' Get availability start time if stream is DASH
                 ' For HLS let it be 0, as the startTime returned is already epoch time
-                m.metadataParser.availabilityStartTime = m.dashParser.getAvailabilityStartTime()
+                m.metadataParser.availabilityStartTime.setLongInt(m.dashParser.getAvailabilityStartTime())
             end if
 
             m.metadataUrl = /\/[^\/?]+(\\??[^\/]*)$/g.replaceAll(url, "/metadata\1")
@@ -102,7 +102,7 @@ class RAFX_SSAI
             print url
             r = rokurequests_Requests().get(url)
             if r.ok and r.statusCode = 200 and r.headers?.["content-type"] = "application/json" and r.json <> invalid
-                if r.json.dataRange <> invalid
+                if r.json.dataRange <> invalid and r.json.dataRange.keys().count() > 0
                     m.lastDataStartTime = r.json.dataRange.start / 1000
                     m.lastDataEndTime = r.json.dataRange.end / 1000
                 end if
@@ -245,7 +245,7 @@ class RAFX_SSAI
     private sub onPosition(msg as object)
         forcePing = false
         if m.metadataParser.startTime = 0 and m.player.sgNode.positioninfo.video > 0 and m.player.sgNode.position > 0
-            m.metadataParser.startTime = m.player.sgNode.positioninfo.video - m.player.sgNode.position
+            m.metadataParser.startTime.setLongInt(m.player.sgNode.positioninfo.video - m.player.sgNode.position)
             forcePing = true
         else if not m.timeInRange()
             forcePing = true
