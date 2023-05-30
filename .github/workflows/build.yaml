@@ -8,10 +8,13 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "16.15.1"
-      - run: npm ci
-      - run: npm run ropm-ci
-      - run: npm run validate
+          node-version: "20.2.0"
+      - name: Install dependencies
+        working-directory: ./lib
+        run: | 
+          npm ci
+          npm run ropm-ci
+          npm run validate
   npm-release:
     #only run this task for version-tagged releases
     if: startsWith(github.ref, 'refs/tags/v')
@@ -25,8 +28,12 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "16.15.1"
-      - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ./.npmrc
-      - run: npm version ${{env.RELEASE_VERSION}} --no-git-tag-version
-      #upload to npm
-      - run: npm publish --access public
+          node-version: "20.2.0"
+      - name: Copy README and LICENSE
+        run: cp README.md LICENSE lib
+      - name: Publish to npm
+        working-directory: ./lib
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ./.npmrc
+          npm version ${{env.RELEASE_VERSION}} --no-git-tag-version
+          npm publish --access public

@@ -21,6 +21,6 @@
     "brighterscript": "^0.64.4"
   },
   "dependencies": {
-    "@harmonicinc/vos_roku_rafx_ssai": "^0.0.2"
+    "@harmonicinc/vos_roku_rafx_ssai": "file:../lib"
   }
 }

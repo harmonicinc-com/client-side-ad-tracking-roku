@@ -92,4 +92,4 @@ Install [roku-requests](https://github.com/rokucommunity/roku-requests) by follo
    ```
 
 ## Example
-Example app is included in `/demo` for reference
+Example app is included in `/demo` for reference. Demo depends on local SDK instead of the one on npm. Change as desired.

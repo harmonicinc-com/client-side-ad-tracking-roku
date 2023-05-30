@@ -1,7 +1,6 @@
-import "pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/ssai.bs"
+import "pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/SSAI.bs"
 library "Roku_Ads.brs"
-const url = "https://manifest-jigsaw-echoy-01.nebula.video/variant/v1/csab/DASH_DASH-1hDVR/Live/channel(478700db-28cc-f1cb-9ed6-e20b0e121c61)/manifest.mpd?sessid=f16220a6-da79-4c48-9155-021e2c8e0041"
-' const url = "https://manifest-jigsaw-echoy-01.nebula.video/variant/v1/csab/DASH/Live/channel(478700db-28cc-f1cb-9ed6-e20b0e121c61)/manifest.mpd?sessid=495709b6-05dd-4eae-bb5e-301c76bb0b1d"
+const url = ""
 
 sub init()
     m.top.adExited = false
@@ -24,9 +23,6 @@ end function
 sub loadStream(adapter as Object)
     if adapter = invalid then return
     result = adapter.getStreamInfo(url)
-    ' result = adapter.getStreamInfo("https://manifest-jigsaw-echoy-01.nebula.video/variant/v1/csab/DASH/Live/channel(478700db-28cc-f1cb-9ed6-e20b0e121c61)/manifest.mpd?sessid=495709b6-05dd-4eae-bb5e-301c76bb0b1d")
-    ' result = adapter.getStreamInfo("https://manifest-jigsaw-echoy-01.nebula.video/variant/v1/csab/HLS/Live/channel(478700db-28cc-f1cb-9ed6-e20b0e121c61)/variant.m3u8?sessid=8108cfdb-09e7-4cca-8ee3-f76faf1bab15")
-    ' result = adapter.getStreamInfo("https://cdn-vos-ppp-01.vos360.video/Content/DASH_DASHCLEAR/Live/channel(PPP-LL-2DASH)/master.mpd")
     if result.ssai
         m.ssai = true
         m.top.video.content.url = result.streamUrl
