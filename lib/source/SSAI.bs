@@ -1,6 +1,7 @@
 import "pkg:/source/roku_modules/rokurequests/Requests.brs"
 import "MetadataParser.bs"
 import "DashParser.bs"
+import "PodHelper.bs"
 
 class RAFX_SSAI
     __name__ = "harmonic"
@@ -35,6 +36,7 @@ class RAFX_SSAI
     private rafMetadata = {}
     private metadataParser
     private dashParser
+    private podHelper
     private logLevel = 0
     private roku_ads
     private lastPingTime = 0
@@ -50,6 +52,7 @@ class RAFX_SSAI
     sub new()
         m.metadataParser = new MetadataParser()
         m.dashParser = new DashParser()
+        m.podHelper = new PodHelper()
         m.roku_ads = Roku_Ads()
     end sub
 
@@ -99,7 +102,6 @@ class RAFX_SSAI
     function requestMetadata()
         if m.metadataUrl <> invalid
             url = not m.timeInRange() ? `${m.metadataUrl}&start=${m.getMpdTime() * 1000}` : m.metadataUrl
-            print url
             r = rokurequests_Requests().get(url)
             if r.ok and r.statusCode = 200 and r.headers?.["content-type"] = "application/json" and r.json <> invalid
                 if r.json.dataRange <> invalid and r.json.dataRange.keys().count() > 0
@@ -148,7 +150,11 @@ class RAFX_SSAI
         for each newPod in newPods.adBreaks
             podExist = m.findPodById(current, newPod.id)
             if podExist = invalid
-                current.push(newPod)
+                if current.count() = 0
+                    current.push(newPod)
+                else
+                    current = m.podHelper.binaryInsert(current, newPod)
+                end if
                 adOpportunities += newPod.ads.count()
             end if
         end for

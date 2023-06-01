@@ -24,7 +24,7 @@ class DashParser
         return invalid
     end function
 
-    private function parseXml(str as string) as dynamic
+    private function parseXml(str as dynamic) as dynamic
         if str = invalid then return invalid  'if the response is invalid, return invalid
         m.mpd = CreateObject("roXMLElement") '
         return m.mpd.Parse(str)
