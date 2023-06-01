@@ -18,6 +18,14 @@
   },
   "author": "Enson Choy",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harmonicinc-com/client-side-ad-tracking-roku.git"
+  },
+  "bugs": {
+    "url": "https://github.com/harmonicinc-com/client-side-ad-tracking-roku/issues"
+  },
+  "homepage": "https://github.com/harmonicinc-com/client-side-ad-tracking-roku#readme",
   "keywords": [
     "ropm"
   ],
