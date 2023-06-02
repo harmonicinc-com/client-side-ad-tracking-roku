@@ -4,6 +4,7 @@ class PodHelper
         for i = 0 to arr.count() - 1 step 1:
             if i = start then res.push(el)
             res.push(arr[i])
+            if i+1 = start then res.push(el)
         end for
         return res
     end function
