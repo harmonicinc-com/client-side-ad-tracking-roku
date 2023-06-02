@@ -14,7 +14,7 @@ sub init()
     m.eventStartTimes = m.top.findNode("eventStartTimes")
 
     m.positionObserved = false
-    m.POD_ENDTIME_TOLERANCE_SEC = 0
+    m.POD_ENDTIME_TOLERANCE_SEC = 2
 end sub
 
 sub onVideoNodeUpdated()
@@ -112,7 +112,7 @@ function getCurrentAd(pod)
     position = m.top.video.position
     for each ad in pod.ads
         adEndTime = prevAdStartTime + ad.duration
-        if prevAdStartTime < position and position < adEndTime
+        if prevAdStartTime < position and position < adEndTime + m.POD_ENDTIME_TOLERANCE_SEC
             currentAd = ad
             currentAd.renderTime = prevAdStartTime
             currentAd.endTime = adEndTime
@@ -121,10 +121,6 @@ function getCurrentAd(pod)
         prevAdStartTime += ad.duration
     end for
     return currentAd
-end function
-
-function geNextPod()
-    return 0
 end function
 
 function formatTwoDigitFloat(val as dynamic) as string
