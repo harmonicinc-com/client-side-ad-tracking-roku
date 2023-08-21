@@ -91,5 +91,50 @@ Install [roku-requests](https://github.com/rokucommunity/roku-requests) by follo
     m.top.video.unobserveFieldScoped("state")
    ```
 
-## Example
-Example app is included in `/demo` for reference. Demo depends on local SDK instead of the one on npm. Change as desired.
+## Example app tryout
+Example app is included in `/demo` for reference. Demo depends on local SDK instead of the one on npm.
+
+ropm packager is required. Install it globally by
+```
+npm i ropm -g
+```
+
+You'll need to install the dependencies of the SDK first by
+```
+cd lib
+npm i
+ropm i
+```
+
+Move on to the demo app, do the same by
+```
+cd ../demo
+npm i
+ropm i
+```
+
+### Build the app
+Since the manifest URL is hardcoded, you'll need to replace it prior to building the app.
+
+In `demo/components/Tasks/PlayerTask.bs` line 3, you should have the following:
+```
+const url = ""
+```
+Replace it with the manifest URL, for example
+```
+const url = "https://www.example.com/master.mpd"
+```
+Then locate to the demo app root directory i.e. `demo/`. Run the following:
+
+```
+npm run package
+```
+The Roku app package will be saved as `/demo/out/demo.zip`. Upload this zip file in Roku debug web UI to install it.
+
+### Develop on Roku w/ live reload
+Edit `demo/bsconfig.json`. Fill in the `host` and `password` with the Roku device's IP and developer mode password respectively
+
+Then run the following
+```
+npm run watch
+```
