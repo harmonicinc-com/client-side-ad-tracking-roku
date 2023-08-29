@@ -52,11 +52,12 @@ jobs:
           npm ci
           npm run ropm-ci
           npm run build
-          tar -C out/.roku-deploy-staging -zcf out/hlit-rafx-ssai-brs.tar.gz source
+          cd out/.roku-deploy-staging
+          zip -r ../hlit-rafx-ssai-brs.zip source
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: lib/out/hlit-rafx-ssai-brs.tar.gz
+          file: lib/out/hlit-rafx-ssai-brs.zip
           tag: ${{ github.ref }}
           overwrite: true

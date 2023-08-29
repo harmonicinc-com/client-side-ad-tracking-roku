@@ -1,19 +1,7 @@
 # Harmonic RAFX SSAI adapter
 
 ## Installation
-### ropm & BrighterScript (highly recommended)
-1. [ropm](https://github.com/rokucommunity/ropm) package manager is supported. Install it by
-    ```
-    ropm install @harmonicinc/vos_roku_rafx_ssai
-    ```
-1. Create a new player task. It should be launched by another UI logic script.
-1. Import required libraries in your BrighterScript file
-   ```
-   import "pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/ssai.bs"
-   library "Roku_Ads.brs"
-   ```
-
-### Manual install
+### Install from Release Artifact
 1. Copy source files
 
    > Choose one below
@@ -57,7 +45,18 @@
    ```
    library "Roku_Ads.brs"
    ```
-   
+
+### Install from ropm
+1. [ropm](https://github.com/rokucommunity/ropm) package manager is supported. Install it by
+    ```
+    ropm install @harmonicinc/vos_roku_rafx_ssai
+    ```
+1. Create a new player task. It should be launched by another UI logic script.
+1. Import required libraries in your BrighterScript file
+   ```
+   import "pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/ssai.bs"
+   library "Roku_Ads.brs"
+   ```
 
 ## Usage
 1. Create Harmonic RAFX adapter by 
