@@ -52,7 +52,7 @@ jobs:
           npm ci
           npm run ropm-ci
           npm run build
-          tar -zcf out/hlit-rafx-ssai-brs.tar.gz out/.roku-deploy-staging
+          tar -C out/.roku-deploy-staging -zcf out/hlit-rafx-ssai-brs.tar.gz source
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
