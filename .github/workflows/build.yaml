@@ -48,6 +48,7 @@ jobs:
         working-directory: ./lib
         run: |
           npm ci
+          npm run ropm-ci
           npm run build
           tar -zcf out/hlit-rafx-ssai-brs.tar.gz out/.roku-deploy-staging
       - name: Upload binaries to release
