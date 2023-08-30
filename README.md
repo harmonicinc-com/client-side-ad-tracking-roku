@@ -4,9 +4,25 @@
 ### Native BrightScript only
 1. Download latest release transpiled in BrightScript: [hlit-rafx-ssai-brs.zip](https://github.com/harmonicinc-com/client-side-ad-tracking-roku/releases/latest/download/hlit-rafx-ssai-brs.zip)
     
-2. Copy all files inside `/source` to `<your_app_root>/source`
+2. Copy all files inside `/source` to `<your_app_root>/source/hlit-rafx-ssai/`
 
     Dependencies are included under `/source/roku_modules`, so there's no need to install them separately.
+
+    You should get something like this:
+    ```
+    └── source
+        ├── hlit_rafx_ssai
+        │   ├── DashParser.brs
+        │   ├── MetadataParser.brs
+        │   ├── PodHelper.brs
+        │   ├── SSAI.brs
+        │   └── roku_modules
+        │       ├── bslib
+        │       │   └── bslib.brs
+        │       └── rokurequests
+        │           └── Requests.brs
+        └── main.brs
+    ```
 
 3. Create a new task component that is responsible for player control & client-side ad tracking. You may use existing ones if you already have one in your app. 
    
@@ -15,12 +31,12 @@
 
    In your task component XML, import required libraries.
    ```
-    <script type="text/brightscript" uri="pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/SSAI.brs" />
-    <script type="text/brightscript" uri="pkg:/source/roku_modules/rokurequests_v1/Requests.brs" />
-    <script type="text/brightscript" uri="pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/PodHelper.brs" />
-    <script type="text/brightscript" uri="pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/MetadataParser.brs" />
-    <script type="text/brightscript" uri="pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/DashParser.brs" />
-    <script type="text/brightscript" uri="pkg:/source/bslib.brs" />
+    <script type="text/brightscript" uri="pkg:/source/hlit_rafx_ssai/SSAI.brs" />
+    <script type="text/brightscript" uri="pkg:/source/hlit_rafx_ssai/PodHelper.brs" />
+    <script type="text/brightscript" uri="pkg:/source/hlit_rafx_ssai/MetadataParser.brs" />
+    <script type="text/brightscript" uri="pkg:/source/hlit_rafx_ssai/DashParser.brs" />
+    <script type="text/brightscript" uri="pkg:/source/hlit_rafx_ssai/roku_modules/rokurequests/Requests.brs" />
+    <script type="text/brightscript" uri="pkg:/source/hlit_rafx_ssai/roku_modules/bslib/bslib.brs" />
    ```
    Import Roku RAF library in your BrightScript file
    ```
