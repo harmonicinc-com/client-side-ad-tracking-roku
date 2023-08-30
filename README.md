@@ -79,7 +79,9 @@
    end sub
 
    ```
-1. Create messsage port and add it to the adapter
+1. Create messsage port and add it to the adapter. 
+   
+   Note that the adapter currently **does not support custom ad beacon firing** at the time of writing. The adapter will handle all the tracking beacons by itself.
    ```
    port = CreateObject("roMessagePort")
    adapter.enableAds({
@@ -90,7 +92,7 @@
         useStitched: true ' required as firing event on client is not supported yet
     })
    ```
-1. Observe `position` field and create a message loop to feed it to the adapter
+2. Observe `position` field and create a message loop to feed it to the adapter
    ```
    m.top.video.observeFieldScoped("position", port)
     m.top.video.observeFieldScoped("control", port)
