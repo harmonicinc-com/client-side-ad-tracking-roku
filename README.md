@@ -1,37 +1,19 @@
 # Harmonic RAFX SSAI adapter
 
 ## Installation
-### Install from Release Artifact
-1. Copy source files
-
-   > Choose one below
-
-    **1a. With BrighterScript**
-
-    Copy the whole `source` folder to your project's `source` folder
-
-    Install [roku-requests](https://github.com/rokucommunity/roku-requests) by following the README in that repo
-
-    **1b. With native BrightScript**
-
-    Transpiled BrightScript files are provided in Release as artifact `hlit-rafx-ssai-brs.tar.gz` if you're unable to use BrighterScript. Copy those files in the zip instead of the source files in the repo to your app.
-
-    Dependencies are included, so there's no need to install them separately.
-
-1. Create a new player task. It should be launched by another UI logic script.
-1. Import required libraries
-
-   **3a. If you're using BrighterScript**
+### Native BrightScript only
+1. Download latest release transpiled in BrightScript: [hlit-rafx-ssai-brs.zip](https://github.com/harmonicinc-com/client-side-ad-tracking-roku/releases/latest/download/hlit-rafx-ssai-brs.zip)
     
-   Import required libraries in your BrighterScript file
-   ```
-   import "pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/ssai.bs"
-   library "Roku_Ads.brs"
-   ```
+2. Copy all files inside `/source` to `<your_app_root>/source`
 
-   **3b. If you're using native BrightScript**
+    Dependencies are included under `/source/roku_modules`, so there's no need to install them separately.
 
-   In the task component XML, import required libraries
+3. Create a new task component that is responsible for player control & client-side ad tracking. You may use existing ones if you already have one in your app. 
+   
+   For example, in [Tasks](https://github.com/harmonicinc-com/client-side-ad-tracking-roku/tree/main/demo/components/Tasks) folder in the example app, we have a dedicated `PlayerTask` to handle player-related functions
+4. Import required libraries
+
+   In your task component XML, import required libraries.
    ```
     <script type="text/brightscript" uri="pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/SSAI.brs" />
     <script type="text/brightscript" uri="pkg:/source/roku_modules/rokurequests_v1/Requests.brs" />
@@ -40,18 +22,19 @@
     <script type="text/brightscript" uri="pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/DashParser.brs" />
     <script type="text/brightscript" uri="pkg:/source/bslib.brs" />
    ```
-    
    Import Roku RAF library in your BrightScript file
    ```
    library "Roku_Ads.brs"
    ```
 
-### Install from ropm
+### Using ropm & BrighterScript
 1. [ropm](https://github.com/rokucommunity/ropm) package manager is supported. Install it by
     ```
     ropm install @harmonicinc/vos_roku_rafx_ssai
     ```
-1. Create a new player task. It should be launched by another UI logic script.
+1. Create a new task component that is responsible for player control & client-side ad tracking. You may use existing ones if you already have one in your app. 
+   
+   For example, in [Tasks](https://github.com/harmonicinc-com/client-side-ad-tracking-roku/tree/main/demo/components/Tasks) folder in the example app, we have a dedicated [PlayerTask.bs](https://github.com/harmonicinc-com/client-side-ad-tracking-roku/blob/main/demo/components/Tasks/PlayerTask.bs) to handle player-related functions
 1. Import required libraries in your BrighterScript file
    ```
    import "pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/ssai.bs"
@@ -122,20 +105,6 @@
    ```
 
 ## Development
-### Prerequisites
-This adapter is written in [BrighterScript](https://github.com/rokucommunity/brighterscript). Install it globally by running
-```
-npm install brighterscript -g
-```
-Or install it locally in your Roku app package repository
-```
-npm install brighterscript --save-dev
-```
-Transpiling prior to building your Roku app is required.
-```
-bsc
-```
-
 ### Example app tryout
 Example app is included in `/demo` for reference. Demo depends on local SDK instead of the one on npm.
 
