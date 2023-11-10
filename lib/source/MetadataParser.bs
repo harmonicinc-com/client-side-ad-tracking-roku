@@ -65,17 +65,20 @@ class MetadataParser
 
     sub parseEvents(tracking as object, events as object)
         for each event in events
-            rafEvent = {
-                event: event.event,
-                url: event.signalingUrls[0],
-                triggered: false
-            }
-            if event["startTime"] <> invalid
-                eventStart = createObject("roLongInteger")
-                eventStart.setLongInt(event.startTime / 1000)
-                rafEvent.time = m.availabilityStartTime + eventStart - m.startTime
-            end if
-            tracking.push(rafEvent)
+            ' Append extra event for each signaling URL
+            for each url in event.signalingUrls
+                rafEvent = {
+                    event: event.event,
+                    url: url,
+                    triggered: false
+                }
+                if event["startTime"] <> invalid
+                    eventStart = createObject("roLongInteger")
+                    eventStart.setLongInt(event.startTime / 1000)
+                    rafEvent.time = m.availabilityStartTime + eventStart - m.startTime
+                end if
+                tracking.push(rafEvent)
+            end for
         end for
     end sub
 end class
