@@ -67,7 +67,7 @@ class RAFX_SSAI
             streamUrl: invalid
         }
 
-        if /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)\/variant/.isMatch(url)
+        if /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)(?:\/pmm-[^\/]*)?\/variant/.isMatch(url)
             ' need to send a manifest request first, or session won't be created
             manifest = rokurequests_Requests().get(url)
 
