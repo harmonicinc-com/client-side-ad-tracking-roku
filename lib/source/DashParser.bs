@@ -24,6 +24,16 @@ class DashParser
         return invalid
     end function
 
+    function getLocation() as dynamic
+        if m.mpdValid = true
+            location = m.mpd.GetNamedElements("Location")
+            if location.Count() > 0
+                return location.GetHead().GetText()
+            end if
+        end if
+        return invalid
+    end function
+
     private function parseXml(str as dynamic) as dynamic
         if str = invalid then return invalid  'if the response is invalid, return invalid
         m.mpd = CreateObject("roXMLElement") '

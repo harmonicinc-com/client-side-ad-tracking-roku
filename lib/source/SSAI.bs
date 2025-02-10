@@ -2,6 +2,7 @@ import "pkg:/source/roku_modules/rokurequests/Requests.brs"
 import "MetadataParser.bs"
 import "DashParser.bs"
 import "PodHelper.bs"
+import "HlsParser.bs"
 
 class RAFX_SSAI
     __name__ = "harmonic"
@@ -36,6 +37,7 @@ class RAFX_SSAI
     private rafMetadata = {}
     private metadataParser
     private dashParser
+    private hlsParser
     private podHelper
     private logLevel = 0
     private roku_ads
@@ -52,6 +54,7 @@ class RAFX_SSAI
     sub new()
         m.metadataParser = new MetadataParser()
         m.dashParser = new DashParser()
+        m.hlsParser = new HlsParser()
         m.podHelper = new PodHelper()
         m.roku_ads = Roku_Ads()
     end sub
@@ -70,32 +73,56 @@ class RAFX_SSAI
         if /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)(?:\/pmm-[^\/]*)?\/variant/.isMatch(url)
             ' need to send a manifest request first, or session won't be created
             manifest = rokurequests_Requests().get(url)
-
+    
             ' Check if stream is DASH
-            m.dashParser.setManifest(manifest.text)
             fileExt = /\.(\w{3,4})($|\?)/g.match(url)[1]
+            m.dashParser.setManifest(manifest.text)
+            
+            streamUrl = invalid
             if m.dashParser.isDash(manifest.headers["content-type"], fileExt)
-                ' Get availability start time if stream is DASH
-                ' For HLS let it be 0, as the startTime returned is already epoch time
+                ' Handle DASH
                 m.metadataParser.availabilityStartTime.setLongInt(m.dashParser.getAvailabilityStartTime())
+                streamUrl = m.dashParser.getLocation()
+            else if fileExt = "m3u8"
+                ' Handle HLS
+                m.hlsParser.setPlaylist(manifest.text)
+                streamUrl = m.hlsParser.getFirstMediaPlaylistUrl()
             end if
-
-            m.metadataUrl = /\/[^\/?]+(\\??[^\/]*)$/g.replaceAll(url, "/metadata\1")
-            m.rafMetadata = m.requestMetadata()
-            result.ssai = m.rafMetadata <> invalid
-            result.streamUrl = result.ssai ? url : invalid
+    
+            if streamUrl <> invalid
+                ' If URL is absolute, use it directly
+                if Left(streamUrl, 4) = "http"
+                    finalUrl = streamUrl
+                else
+                    ' Handle relative URL
+                    ' Extract hostname and base path in one go
+                    urlParts = /^(?:https?:\/\/)?(?:[^@\/?\n]+@)?(?:www\.)?([^:\/?\n]+)(\/.*?\/)[^\/]+$/g.match(url)
+                    hostname = urlParts[1]
+                    basePath = urlParts[2]
+                    
+                    ' Count number of "../" sequences
+                    upCount = 0
+                    parts = streamUrl.split("/")
+                    for each part in parts
+                        if part = ".." then upCount = upCount + 1
+                    end for
+                    ' Remove directories based on "../" count
+                    for i = 1 to upCount
+                        basePath = /\/[^\/]+\/$/g.replaceAll(basePath, "/")
+                    end for
+                    ' Remove "../" sequences from stream URL
+                    cleanUrl = streamUrl.replace(/(?:\.\.\/)+/g, "")
+                    finalUrl = `https://${hostname}${basePath}${cleanUrl}`
+                end if
+                
+                ' Replace filename with metadata, ignore any extension
+                m.metadataUrl = /\/[^\/\.?]+(?:\.[^\/\.?]+)?(\??[^\/]*$)/g.replaceAll(finalUrl, "/metadata\1")
+                
+                m.rafMetadata = m.requestMetadata()
+                result.ssai = m.rafMetadata <> invalid
+                result.streamUrl = result.ssai ? url : invalid
+            end if
         end if
-
-        ' r = rokurequests_Requests().get(url)
-        ' if r.ok and r.statusCode = 302
-        '     location = r.headers.location
-        '     result.streamUrl = /^(?:http(?:s)?):\/\/.+?\/(.+)/ig.replaceAll(url, `$1${location}`)
-        '     ' Replace file name with word "metadata"
-        '     metadataUrlPath = /\/[^\/?]+(\\??[^\/]*)$/g.replaceAll(location, "/metadata$1")
-        '     ' Replace original URL path with metadata URL
-        '     m.metadataUrl = /^(?:http(?:s)?):\/\/.+?\/(.+)/ig.replaceAll(url, `$1${metadataUrlPath}`)
-        '     result.ssai = m.requestMetadata()
-        ' end if
         return result
     end function
 

@@ -1,0 +1,17 @@
+class HlsParser
+    private playlist
+
+    sub setPlaylist(playlist)
+        m.playlist = playlist
+    end sub
+
+    function getFirstMediaPlaylistUrl() as dynamic
+        ' Parse first stream URL from m3u8
+        regex = CreateObject("roRegex", "^[^#].+\.m3u8.*$", "m")
+        match = regex.Match(m.playlist)
+        if match.count() > 0
+            return match[0]
+        end if
+        return invalid
+    end function
+end class
