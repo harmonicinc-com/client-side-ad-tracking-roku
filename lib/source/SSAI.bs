@@ -100,19 +100,24 @@ class RAFX_SSAI
                     hostname = urlParts[1]
                     basePath = urlParts[2]
                     
-                    ' Count number of "../" sequences
-                    upCount = 0
-                    parts = streamUrl.split("/")
-                    for each part in parts
-                        if part = ".." then upCount = upCount + 1
-                    end for
-                    ' Remove directories based on "../" count
-                    for i = 1 to upCount
-                        basePath = /\/[^\/]+\/$/g.replaceAll(basePath, "/")
-                    end for
-                    ' Remove "../" sequences from stream URL
-                    cleanUrl = streamUrl.replace(/(?:\.\.\/)+/g, "")
-                    finalUrl = `https://${hostname}${basePath}${cleanUrl}`
+                    if streamUrl.instr("../") >= 0
+                        ' Count number of "../" sequences
+                        upCount = 0
+                        parts = streamUrl.split("/")
+                        for each part in parts
+                            if part = ".." then upCount = upCount + 1
+                        end for
+                        ' Remove directories based on "../" count
+                        for i = 1 to upCount
+                            basePath = /\/[^\/]+\/$/g.replaceAll(basePath, "/")
+                        end for
+                        ' Remove "../" sequences from stream URL
+                        cleanUrl = /(?:\.\.\/)+/g.replace(streamUrl, "")
+                        finalUrl = `https://${hostname}${basePath}${cleanUrl}`
+                    else
+                        ' For relative paths without "../", just combine hostname and stream URL
+                        finalUrl = `https://${hostname}${streamUrl}`
+                    end if
                 end if
                 
                 ' Replace filename with metadata, ignore any extension
