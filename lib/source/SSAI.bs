@@ -73,8 +73,9 @@ class RAFX_SSAI
         if /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)(?:\/pmm-[^\/]*)?\/variant/.isMatch(url)
             ' need to send a manifest request first, or session won't be created
             manifest = rokurequests_Requests().get(url)
-    
-            ' Check if stream is DASH
+
+            ' Extract filename with query params and file extension
+            fullFilename = /[^\/]+(\?[^\/]*)?$/g.match(url)[0]
             fileExt = /\.(\w{3,4})($|\?)/g.match(url)[1]
             m.dashParser.setManifest(manifest.text)
             
@@ -125,7 +126,7 @@ class RAFX_SSAI
                 
                 m.rafMetadata = m.requestMetadata()
                 result.ssai = m.rafMetadata <> invalid
-                result.streamUrl = result.ssai ? url : invalid
+                result.streamUrl = result.ssai ? /[^\/]+(\?[^\/]*)?$/g.replaceAll(finalUrl, fullFilename) : invalid
             end if
         end if
         return result
