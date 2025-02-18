@@ -70,7 +70,14 @@
    result = adapter.getStreamInfo(m.top.video.content.url)
    ```
 1. Check if `result.ssai` is true. If not, the stream is not compatible with the adapter
-1. (Optional) Add event listeners. Currently only change on pods will be emitted:
+1. Use the returned stream URL to play the video
+   ```
+   m.top.video.content.url = result.streamUrl
+   ```
+   See [PlayerTask](https://github.com/harmonicinc-com/client-side-ad-tracking-roku/blob/main/demo/components/Tasks/PlayerTask.bs#L28) in the example app for reference
+
+   The returned URL is different from the original stream URL. If the returned URL is not used, the SSAI and ad beacons may misalign with the video playback, or beacons will not be fired at all.
+2. (Optional) Add event listeners. Currently only change on pods will be emitted:
    ```
    adapter.addEventListener(adapter.AdEvent.PODS, podsCallback)
 
@@ -79,7 +86,7 @@
    end sub
 
    ```
-1. Create messsage port and add it to the adapter. 
+3. Create messsage port and add it to the adapter. 
    
    Note that the adapter currently **does not support custom ad beacon firing** at the time of writing. The adapter will handle all the tracking beacons by itself.
    ```
@@ -92,7 +99,7 @@
         useStitched: true ' required as firing event on client is not supported yet
     })
    ```
-2. Observe `position` field and create a message loop to feed it to the adapter
+4. Observe `position` field and create a message loop to feed it to the adapter
    ```
    m.top.video.observeFieldScoped("position", port)
     m.top.video.observeFieldScoped("control", port)
