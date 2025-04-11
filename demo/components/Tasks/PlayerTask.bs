@@ -1,6 +1,9 @@
 import "pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/SSAI.bs"
 library "Roku_Ads.brs"
 const url = ""
+const options = {
+    initRequest: true
+}
 
 sub init()
     m.top.adExited = false
@@ -22,7 +25,7 @@ end function
 
 sub loadStream(adapter as Object)
     if adapter = invalid then return
-    result = adapter.getStreamInfo(url)
+    result = adapter.getStreamInfo(url, options)
     if result.ssai
         m.ssai = true
         m.top.video.content.url = result.streamUrl
