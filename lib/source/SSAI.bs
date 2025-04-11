@@ -1,4 +1,5 @@
 import "pkg:/source/roku_modules/rokurequests/Requests.brs"
+import "InitResponseParser.bs"
 import "MetadataParser.bs"
 import "DashParser.bs"
 import "PodHelper.bs"
@@ -35,6 +36,7 @@ class RAFX_SSAI
     private useStitched
     private callbacks = {}
     private rafMetadata = {}
+    private initResponseParser
     private metadataParser
     private dashParser
     private hlsParser
@@ -52,6 +54,7 @@ class RAFX_SSAI
     private adsInProgress = false
 
     sub new()
+        m.initResponseParser = new InitResponseParser()
         m.metadataParser = new MetadataParser()
         m.dashParser = new DashParser()
         m.hlsParser = new HlsParser()
@@ -60,23 +63,64 @@ class RAFX_SSAI
     end sub
 
     ' param: URL - Live URL w/ sessId query param
+    ' param: options - object - Options for the request (optional)
+    '   - initRequest - boolean - True if a POST request should be sent to init the session
     ' return assocarray:
     ' - ssai: boolean - True if SSAI is detected, false otherwise
     ' - streamUrl: string | invalid - Personalized stream URL with session ID.
     '                                     Only valid if ssai is true
-    function getStreamInfo(url as string) as object
+    function getStreamInfo(url as string, options as object) as object
         result = {
             ssai: false,
             streamUrl: invalid
         }
 
+        if options = invalid
+            options = {}
+        end if
+        initRequest = options["initRequest"]
+        if initRequest = invalid
+            ' Default to use initRequest
+            initRequest = true
+        end if
+
         if /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)(?:\/pmm-[^\/]*)?\/variant/.isMatch(url)
-            ' need to send a manifest request first, or session won't be created
-            manifest = rokurequests_Requests().get(url)
+            ' Extract hostname and base path in one go
+            urlParts = /^(?:https?:\/\/)?(?:[^@\/?\n]+@)?(?:www\.)?([^:\/?\n]+)(\/.*?\/)[^\/]+$/g.match(url)
+            hostname = urlParts[1]
+            basePath = urlParts[2]
 
             ' Extract filename with query params and file extension
             fullFilename = /[^\/]+(\?[^\/]*)?$/g.match(url)[0]
             fileExt = /\.(\w{3,4})($|\?)/g.match(url)[1]
+
+            ' Get the URLs from the init request if initRequest is true
+            if initRequest
+                initInfo = m.getInitRequestInfo(url)
+                if initInfo.manifestUrl <> invalid and initInfo.trackingUrl <> invalid
+                    m.log(`Response from POST init request successfully parsed. manifest: ${initInfo.manifestUrl}, metadata: ${initInfo.trackingUrl}`)
+
+                    ' The URLs obtained are expected to be relative to the hostname
+                    result.streamUrl = `https://${hostname}${initInfo.manifestUrl}`
+
+                    manifest = rokurequests_Requests().get(result.streamUrl)
+                    m.dashParser.setManifest(manifest.text)
+                    if m.dashParser.isDash(manifest.headers["content-type"], fileExt)
+                        m.metadataParser.availabilityStartTime.setLongInt(m.dashParser.getAvailabilityStartTime())
+                    end if
+
+                    m.metadataUrl = `https://${hostname}${initInfo.trackingUrl}`
+                    m.rafMetadata = m.requestMetadata()
+                    result.ssai = m.rafMetadata <> invalid
+
+                    return result
+                else
+                    m.log("POST init request failed, falling back to GET request")
+                end if
+            end if
+
+            ' need to send a manifest request first, or session won't be created
+            manifest = rokurequests_Requests().get(url)
             m.dashParser.setManifest(manifest.text)
             
             streamUrl = invalid
@@ -96,11 +140,6 @@ class RAFX_SSAI
                     finalUrl = streamUrl
                 else
                     ' Handle relative URL
-                    ' Extract hostname and base path in one go
-                    urlParts = /^(?:https?:\/\/)?(?:[^@\/?\n]+@)?(?:www\.)?([^:\/?\n]+)(\/.*?\/)[^\/]+$/g.match(url)
-                    hostname = urlParts[1]
-                    basePath = urlParts[2]
-                    
                     if streamUrl.instr("../") >= 0
                         ' Count number of "../" sequences
                         upCount = 0
@@ -115,8 +154,13 @@ class RAFX_SSAI
                         ' Remove "../" sequences from stream URL
                         cleanUrl = /(?:\.\.\/)+/g.replace(streamUrl, "")
                         finalUrl = `https://${hostname}${basePath}${cleanUrl}`
+                    else if Left(streamUrl, 1) <> "/"
+                        ' For relative paths not starting with "/",
+                        ' i.e., relative to basePath: combine hostname, base path, and stream URL
+                        finalUrl = `https://${hostname}${basePath}${streamUrl}`
                     else
-                        ' For relative paths without "../", just combine hostname and stream URL
+                        ' For relative paths without "../" and starting with "/",
+                        ' i.e., relative to hostname: just combine hostname and stream URL
                         finalUrl = `https://${hostname}${streamUrl}`
                     end if
                 end if
@@ -129,6 +173,37 @@ class RAFX_SSAI
                 result.streamUrl = result.ssai ? /[^\/]+(\?[^\/]*)?$/g.replaceAll(finalUrl, fullFilename) : invalid
             end if
         end if
+        return result
+    end function
+
+    private function getInitRequestInfo(url as string) as object
+        result = {
+            manifestUrl: invalid,
+            trackingUrl: invalid
+        }
+
+        ' Send POST init request
+        initResponse = rokurequests_Requests().post(url, {})
+
+        if initResponse = invalid or not initResponse.ok or initResponse.statusCode <> 200
+            m.log("Init request failed with status code: " + initResponse.statusCode.tostr())
+            ' Should fallback to GET request
+        else
+            ' Parse the urls from the response
+            m.initResponseParser.setResponseJson(initResponse.json)
+
+            ' Extract the manifest and tracking URLs
+            manifestUrlPath = m.initResponseParser.getManifestUrl()
+            if manifestUrlPath <> invalid
+                result.manifestUrl = manifestUrlPath
+            end if
+
+            trackingUrlPath = m.initResponseParser.getTrackingUrl()
+            if trackingUrlPath <> invalid
+                result.trackingUrl = trackingUrlPath
+            end if
+        end if
+
         return result
     end function
 

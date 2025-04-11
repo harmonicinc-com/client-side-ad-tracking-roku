@@ -69,15 +69,30 @@
    ```
    result = adapter.getStreamInfo(m.top.video.content.url)
    ```
-1. Check if `result.ssai` is true. If not, the stream is not compatible with the adapter
-1. Use the returned stream URL to play the video
+2. (Optional) Provide the option on whether to send a POST request first to initialise a session.
+   
+   By default, this is `true` if the options object is not provided. You may set `initRequest` to `false` so that the adapter will send a GET request to obtain the manifest directly. For example:
+
+   ```
+   options = {
+      initRequest: false
+   }
+   result = adapter.getStreamInfo(m.top.video.content.url, options)
+   ```
+
+   > **_Note_**
+   > 
+   > By setting the `initRequest` to `true`, you may omit the `sessid` query param in the URL provided to the adapter, and let the SSAI service generate a session ID for you.
+
+3. Check if `result.ssai` is true. If not, the stream is not compatible with the adapter
+4. Use the returned stream URL to play the video
    ```
    m.top.video.content.url = result.streamUrl
    ```
    See [PlayerTask](https://github.com/harmonicinc-com/client-side-ad-tracking-roku/blob/main/demo/components/Tasks/PlayerTask.bs#L28) in the example app for reference
 
    The returned URL is different from the original stream URL. If the returned URL is not used, the SSAI and ad beacons may misalign with the video playback, or beacons will not be fired at all.
-2. (Optional) Add event listeners. Currently only change on pods will be emitted:
+5. (Optional) Add event listeners. Currently only change on pods will be emitted:
    ```
    adapter.addEventListener(adapter.AdEvent.PODS, podsCallback)
 
@@ -86,7 +101,7 @@
    end sub
 
    ```
-3. Create messsage port and add it to the adapter. 
+6. Create messsage port and add it to the adapter. 
    
    Note that the adapter currently **does not support custom ad beacon firing** at the time of writing. The adapter will handle all the tracking beacons by itself.
    ```
@@ -99,7 +114,7 @@
         useStitched: true ' required as firing event on client is not supported yet
     })
    ```
-4. Observe `position` field and create a message loop to feed it to the adapter
+7. Observe `position` field and create a message loop to feed it to the adapter
    ```
    m.top.video.observeFieldScoped("position", port)
     m.top.video.observeFieldScoped("control", port)
@@ -163,6 +178,16 @@ Replace it with the manifest URL, for example
 ```
 const url = "https://www.example.com/master.mpd"
 ```
+
+> **_Optional_**
+>
+> To force the adapter to send a GET request to obtain the manifest instead of sending a POST request to initialise the session, set the following in lines 4-6:
+> ```
+> const options = {
+>    initRequest: false
+> }
+> ```
+
 Then locate to the demo app root directory i.e. `demo/`. Run the following:
 
 ```

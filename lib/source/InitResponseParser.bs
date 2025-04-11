@@ -1,0 +1,27 @@
+class InitResponseParser
+    private responseJson
+
+    sub setResponseJson(responseJson)
+        m.responseJson = responseJson
+    end sub
+
+    function getManifestUrl() as dynamic
+        if m.responseJson <> invalid
+            manifestUrl = m.responseJson["manifestUrl"]
+            if manifestUrl <> invalid
+                return manifestUrl
+            end if
+        end if
+        return invalid
+    end function
+
+    function getTrackingUrl() as dynamic
+        if m.responseJson <> invalid
+            trackingUrl = m.responseJson["trackingUrl"]
+            if trackingUrl <> invalid
+                return trackingUrl
+            end if
+        end if
+        return invalid
+    end function
+end class
