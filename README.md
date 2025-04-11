@@ -101,7 +101,7 @@
    end sub
 
    ```
-6. Create messsage port and add it to the adapter. 
+6. Create message port and add it to the adapter. 
    
    Note that the adapter currently **does not support custom ad beacon firing** at the time of writing. The adapter will handle all the tracking beacons by itself.
    ```
