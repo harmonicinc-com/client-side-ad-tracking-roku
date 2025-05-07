@@ -202,3 +202,33 @@ Then run the following
 ```
 npm run watch
 ```
+
+## Appendix
+
+### How the Playback URL and Beaconing URL are Obtained by the Library
+
+> [!NOTE]  
+> Applicable when `initRequest` in the options provided is `true` (default is true).
+
+1. The library sends a POST request to the manifest endpoint. For e.g., a POST request is sent to:
+    ```
+    https://my-host/variant/v1/hls/index.m3u8
+    ```
+
+2. The ad insertion service (PMM) responds with the URLs. For e.g.,
+    ```
+    {
+        "manifestUrl": "/variant/v1/index.m3u8?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed",
+        "trackingUrl": "/variant/v1/hls/metadata?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed"
+    }
+    ```
+
+3. The library constructs the URLs by combining the host in the original URL and the relative URLs obtained. For e.g.,
+    ```
+    Manifest URL: https://my-host/variant/v1/hls/index.m3u8?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed
+
+    Metadata URL: https://my-host/variant/v1/hls/metadata?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed
+    ```
+
+> [!NOTE]  
+> The resulting manifest URL above can be obtained in the returned result's `streamUrl` when calling `getStreamInfo`.
