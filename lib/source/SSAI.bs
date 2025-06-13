@@ -4,6 +4,7 @@ import "MetadataParser.bs"
 import "DashParser.bs"
 import "PodHelper.bs"
 import "HlsParser.bs"
+import "UrlResolver.bs"
 
 class RAFX_SSAI
     __name__ = "harmonic"
@@ -100,18 +101,21 @@ class RAFX_SSAI
                 if initInfo.manifestUrl <> invalid and initInfo.trackingUrl <> invalid
                     m.log(`Response from POST init request successfully parsed. manifest: ${initInfo.manifestUrl}, metadata: ${initInfo.trackingUrl}`)
 
-                    ' The URLs obtained are expected to be relative to the hostname
-                    result.streamUrl = `https://${hostname}${initInfo.manifestUrl}`
+                    result.streamUrl = ResolveUrl(hostname, basePath, initInfo.manifestUrl)
+                    m.metadataUrl = ResolveUrl(hostname, basePath, initInfo.trackingUrl)
 
-                    manifest = rokurequests_Requests().get(result.streamUrl)
-                    m.dashParser.setManifest(manifest.text)
-                    if m.dashParser.isDash(manifest.headers["content-type"], fileExt)
-                        m.metadataParser.availabilityStartTime.setLongInt(m.dashParser.getAvailabilityStartTime())
+                    if result.streamUrl <> invalid
+                        manifest = rokurequests_Requests().get(result.streamUrl)
+                        m.dashParser.setManifest(manifest.text)
+                        if m.dashParser.isDash(manifest.headers["content-type"], fileExt)
+                            m.metadataParser.availabilityStartTime.setLongInt(m.dashParser.getAvailabilityStartTime())
+                        end if
+
+                        m.rafMetadata = m.requestMetadata()
+                        result.ssai = m.rafMetadata <> invalid
+                    else
+                        m.log("Failed to construct stream URL from initInfo.")
                     end if
-
-                    m.metadataUrl = `https://${hostname}${initInfo.trackingUrl}`
-                    m.rafMetadata = m.requestMetadata()
-                    result.ssai = m.rafMetadata <> invalid
 
                     return result
                 else
@@ -135,35 +139,7 @@ class RAFX_SSAI
             end if
     
             if streamUrl <> invalid
-                ' If URL is absolute, use it directly
-                if Left(streamUrl, 4) = "http"
-                    finalUrl = streamUrl
-                else
-                    ' Handle relative URL
-                    if streamUrl.instr("../") >= 0
-                        ' Count number of "../" sequences
-                        upCount = 0
-                        parts = streamUrl.split("/")
-                        for each part in parts
-                            if part = ".." then upCount = upCount + 1
-                        end for
-                        ' Remove directories based on "../" count
-                        for i = 1 to upCount
-                            basePath = /\/[^\/]+\/$/g.replaceAll(basePath, "/")
-                        end for
-                        ' Remove "../" sequences from stream URL
-                        cleanUrl = /(?:\.\.\/)+/g.replace(streamUrl, "")
-                        finalUrl = `https://${hostname}${basePath}${cleanUrl}`
-                    else if Left(streamUrl, 1) <> "/"
-                        ' For relative paths not starting with "/",
-                        ' i.e., relative to basePath: combine hostname, base path, and stream URL
-                        finalUrl = `https://${hostname}${basePath}${streamUrl}`
-                    else
-                        ' For relative paths without "../" and starting with "/",
-                        ' i.e., relative to hostname: just combine hostname and stream URL
-                        finalUrl = `https://${hostname}${streamUrl}`
-                    end if
-                end if
+                finalUrl = ResolveUrl(hostname, basePath, streamUrl)
                 
                 ' Replace filename with metadata, ignore any extension
                 m.metadataUrl = /\/[^\/\.?]+(?:\.[^\/\.?]+)?(\??[^\/]*$)/g.replaceAll(finalUrl, "/metadata\1")

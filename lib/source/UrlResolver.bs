@@ -1,0 +1,41 @@
+function ResolveUrl(hostname as string, basePath as string, receivedUrl as string) as string
+    '  If URL is absolute, use it directly
+    if Left(receivedUrl, 4) = "http"
+        return receivedUrl
+    end if
+
+    ' For root-relative URLs (starting with "/")
+    if Left(receivedUrl, 1) = "/"
+        return "https://" + hostname + receivedUrl
+    end if
+
+    ' For relative URLs with ./ or ../ in the path
+    baseSegments = basePath.split("/")
+    relSegments = receivedUrl.split("/")
+
+    ' Remove last empty segment if basePath ends with "/"
+    if baseSegments.count() > 0 and baseSegments[baseSegments.count() - 1] = "" then
+        baseSegments.pop()
+    end if
+
+    ' Walk through relSegments and resolve ., ..
+    for each seg in relSegments
+        if seg = ".."
+            if baseSegments.count() > 0 then baseSegments.pop()
+        else if seg = "." or seg = ""
+            ' Do nothing (stay in current directory or ignore empty)
+        else
+            baseSegments.push(seg)
+        end if
+    end for
+
+    ' Join segments back, ensure leading slash
+    urlPath = "/" + baseSegments.Join("/")
+
+    ' Remove potential double slashes
+    while urlPath.Instr("//") >= 0
+        urlPath = urlPath.Replace("//", "/")
+    end while
+
+    return "https://" + hostname + urlPath
+end function
