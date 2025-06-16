@@ -218,12 +218,12 @@ npm run watch
 2. The ad insertion service (PMM) responds with the URLs. For e.g.,
     ```
     {
-        "manifestUrl": "/variant/v1/index.m3u8?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed",
-        "trackingUrl": "/variant/v1/hls/metadata?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed"
+        "manifestUrl": "./index.m3u8?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed",
+        "trackingUrl": "./metadata?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed"
     }
     ```
 
-3. The library constructs the URLs by combining the host in the original URL and the relative URLs obtained. For e.g.,
+3. The library constructs the URLs by combining the host and base path in the original URL and the relative URLs obtained. For e.g.,
     ```
     Manifest URL: https://my-host/variant/v1/hls/index.m3u8?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed
 
