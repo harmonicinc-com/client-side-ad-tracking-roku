@@ -1,6 +1,6 @@
 function ResolveUrl(hostname as string, basePath as string, receivedUrl as string) as string
     '  If URL is absolute, use it directly
-    if Left(receivedUrl, 4) = "http"
+    if Left(LCase(receivedUrl), 4) = "http"
         return receivedUrl
     end if
 
