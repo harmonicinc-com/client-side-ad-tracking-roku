@@ -9,7 +9,13 @@ class HlsParser
         ' Parse first stream URL from m3u8
         match = /^[^#].+\.m3u8.*$/m.Match(m.playlist)
         if match.count() > 0
-            return match[0]
+            url = match[0]
+            ' Remove isstream=true query parameter if present
+            url = /isstream=true(&|$)/gi.replaceAll(url, "")
+            ' Clean up any remaining double & or trailing ?
+            url = /[?&]&/g.replaceAll(url, "?")
+            url = /[?]$/g.replaceAll(url, "")
+            return url
         end if
         return invalid
     end function

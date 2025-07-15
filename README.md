@@ -69,9 +69,9 @@
    ```
    result = adapter.getStreamInfo(m.top.video.content.url)
    ```
-2. (Optional) Provide the option on whether to send a POST request first to initialise a session.
+2. (Optional) Provide the option on whether to send a request first to the session init API to initialise a session.
    
-   By default, this is `true` if the options object is not provided. You may set `initRequest` to `false` so that the adapter will send a GET request to obtain the manifest directly. For example:
+   By default, this is `true` if the options object is not provided. You may set `initRequest` to `false` so that the adapter will obtain the manifest directly. For example:
 
    ```
    options = {
@@ -181,7 +181,7 @@ const url = "https://www.example.com/master.mpd"
 
 > **_Optional_**
 >
-> To force the adapter to send a GET request to obtain the manifest instead of sending a POST request to initialise the session, set the following in lines 4-6:
+> To force the adapter to obtain the manifest directly instead of using the session init API, set the following in lines 4-6:
 > ```
 > const options = {
 >    initRequest: false
@@ -210,24 +210,24 @@ npm run watch
 > [!NOTE]  
 > Applicable when `initRequest` in the options provided is `true` (default is true).
 
-1. The library sends a POST request to the manifest endpoint. For e.g., a POST request is sent to:
+1. The library sends a GET request to the manifest endpoint with the query param "initSession=true". For e.g., a request is sent to:
     ```
-    https://my-host/variant/v1/hls/index.m3u8
+    https://my-host/variant/v1/hls/index.m3u8?initSession=true
     ```
 
 2. The ad insertion service (PMM) responds with the URLs. For e.g.,
     ```
     {
-        "manifestUrl": "./index.m3u8?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed",
-        "trackingUrl": "./metadata?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed"
+        "manifestUrl": "./index.m3u8?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed&vosad_inst_id=pmm-0",
+        "trackingUrl": "./metadata?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed&vosad_inst_id=pmm-0"
     }
     ```
 
 3. The library constructs the URLs by combining the host and base path in the original URL and the relative URLs obtained. For e.g.,
     ```
-    Manifest URL: https://my-host/variant/v1/hls/index.m3u8?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed
+    Manifest URL: https://my-host/variant/v1/hls/index.m3u8?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed&vosad_inst_id=pmm-0
 
-    Metadata URL: https://my-host/variant/v1/hls/metadata?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed
+    Metadata URL: https://my-host/variant/v1/hls/metadata?sessid=a700d638-a4e8-49cd-b288-6809bd35a3ed&vosad_inst_id=pmm-0
     ```
 
 > [!NOTE]  

@@ -65,7 +65,7 @@ class RAFX_SSAI
 
     ' param: URL - Live URL w/ sessId query param
     ' param: options - object - Options for the request (optional)
-    '   - initRequest - boolean - True if a POST request should be sent to init the session
+    '   - initRequest - boolean - True if the session init API should be called first to initialize the session.
     ' return assocarray:
     ' - ssai: boolean - True if SSAI is detected, false otherwise
     ' - streamUrl: string | invalid - Personalized stream URL with session ID.
@@ -99,7 +99,7 @@ class RAFX_SSAI
             if initRequest
                 initInfo = m.getInitRequestInfo(url)
                 if initInfo.manifestUrl <> invalid and initInfo.trackingUrl <> invalid
-                    m.log(`Response from POST init request successfully parsed. manifest: ${initInfo.manifestUrl}, metadata: ${initInfo.trackingUrl}`)
+                    m.log(`Response from init request successfully parsed. manifest: ${initInfo.manifestUrl}, metadata: ${initInfo.trackingUrl}`)
 
                     result.streamUrl = ResolveUrl(hostname, basePath, initInfo.manifestUrl)
                     m.metadataUrl = ResolveUrl(hostname, basePath, initInfo.trackingUrl)
@@ -119,7 +119,7 @@ class RAFX_SSAI
 
                     return result
                 else
-                    m.log("POST init request failed, falling back to GET request")
+                    m.log("init request failed, falling back to obtaining manifest directly")
                 end if
             end if
 
@@ -146,7 +146,7 @@ class RAFX_SSAI
                 
                 m.rafMetadata = m.requestMetadata()
                 result.ssai = m.rafMetadata <> invalid
-                result.streamUrl = result.ssai ? /[^\/]+(\?[^\/]*)?$/g.replaceAll(finalUrl, fullFilename) : invalid
+                result.streamUrl = result.ssai ? /\/[^\/\.?]+(?:\.[^\/\.?]+)?(\??[^\/]*$)/g.replaceAll(finalUrl, "/"+fullFilename+"\1") : invalid
             end if
         end if
         return result
@@ -158,12 +158,42 @@ class RAFX_SSAI
             trackingUrl: invalid
         }
 
-        ' Send POST init request
+        ' First try GET request with initSession=true query param
+        getUrl = url
+        if url.instr("?") > -1
+            getUrl = url + "&initSession=true"
+        else
+            getUrl = url + "?initSession=true"
+        end if
+        
+        initResponse = rokurequests_Requests().get(getUrl)
+        
+        if initResponse <> invalid and initResponse.ok and initResponse.statusCode = 200
+            ' Parse the urls from the response
+            m.initResponseParser.setResponseJson(initResponse.json)
+
+            ' Extract the manifest and tracking URLs
+            manifestUrlPath = m.initResponseParser.getManifestUrl()
+            trackingUrlPath = m.initResponseParser.getTrackingUrl()
+            
+            ' Check if both URLs were successfully parsed
+            if manifestUrlPath <> invalid and trackingUrlPath <> invalid
+                result.manifestUrl = manifestUrlPath
+                result.trackingUrl = trackingUrlPath
+                return result
+            else
+                m.log("GET init request succeeded but failed to parse URLs, falling back to POST request")
+            end if
+        else
+            m.log("GET init request failed, falling back to POST request")
+        end if
+
+        ' Fallback to POST init request
         initResponse = rokurequests_Requests().post(url, {})
 
         if initResponse = invalid or not initResponse.ok or initResponse.statusCode <> 200
-            m.log("Init request failed with status code: " + initResponse.statusCode.tostr())
-            ' Should fallback to GET request
+            m.log("POST init request failed with status code: " + initResponse.statusCode.tostr())
+            ' Should fallback parsing manifest
         else
             ' Parse the urls from the response
             m.initResponseParser.setResponseJson(initResponse.json)
