@@ -122,7 +122,11 @@ class MergeHelper
         for each event in tracking
             if event.event = eventType
                 ' Check if both have time field and they match, or both don't have time field
-                if (event.doesExist("time") and eventTime <> invalid and event.time = eventTime) or (not event.doesExist("time") and eventTime = invalid)
+                eventHasTime = event.doesExist("time") and event.time <> invalid
+                eventTimeMatches = eventHasTime and eventTime <> invalid and event.time = eventTime
+                bothHaveNoTime = not event.doesExist("time") and eventTime = invalid
+                
+                if eventTimeMatches or bothHaveNoTime
                     return event
                 end if
             end if
