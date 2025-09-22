@@ -69,20 +69,31 @@
    ```
    result = adapter.getStreamInfo(m.top.video.content.url)
    ```
-2. (Optional) Provide the option on whether to send a request first to the session init API to initialise a session.
+2. (Optional) Provide the option object.
    
-   By default, this is `true` if the options object is not provided. You may set `initRequest` to `false` so that the adapter will obtain the manifest directly. For example:
+   ### initRequest
+   Whether to send a request first to the session init API to initialise a session.
 
-   ```
-   options = {
-      initRequest: false
-   }
-   result = adapter.getStreamInfo(m.top.video.content.url, options)
-   ```
+   By default, this is `true` if the options object is not provided. You may set `initRequest` to `false` so that the adapter will obtain the manifest directly.
 
    > **_Note_**
    > 
    > By setting the `initRequest` to `true`, you may omit the `sessid` query param in the URL provided to the adapter, and let the SSAI service generate a session ID for you.
+   
+   ### podRetentionSec
+   How long to cache the ad metadata.
+
+   By default, this will be 7200 (2 hours). You may set `podRetentionSec` to other values.
+   
+   ### Example usage of options
+
+   ```
+   options = {
+      initRequest: false,
+      podRetentionSec: 3600
+   }
+   result = adapter.getStreamInfo(m.top.video.content.url, options)
+   ```
 
 3. Check if `result.ssai` is true. If not, the stream is not compatible with the adapter
 4. Use the returned stream URL to play the video

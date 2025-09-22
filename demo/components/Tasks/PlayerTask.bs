@@ -2,7 +2,8 @@ import "pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/SSAI.bs"
 library "Roku_Ads.brs"
 const url = ""
 const options = {
-    initRequest: true
+    initRequest: true,
+    podRetentionSec: 60 * 60 * 2 ' 2 hours
 }
 
 sub init()
