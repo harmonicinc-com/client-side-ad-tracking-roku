@@ -1,0 +1,142 @@
+class MergeHelper
+
+    sub mergeAds(oldAds as object, newAds as object)
+        if oldAds = invalid or newAds = invalid
+            return
+        end if
+
+        for each newAd in newAds
+            adExist = m.findAdById(oldAds, newAd.id)
+            if adExist = invalid
+                oldAds.push(newAd)
+            else
+                ' Update duration if changed
+                if adExist.duration <> newAd.duration
+                    adExist.duration = newAd.duration
+                end if
+            end if
+        end for
+    end sub
+
+    ' Filter out already triggered beacons from ads before sending to RAF
+    function filterTriggeredBeacons(adBreaks as object) as object
+        if adBreaks = invalid or adBreaks.count() = 0
+            return []
+        end if
+
+        ' Deep copy the structure to avoid modifying the original
+        filteredBreaks = []
+        
+        for each pod in adBreaks
+            filteredPod = {
+                viewed: pod.viewed,
+                renderTime: pod.renderTime,
+                renderSequence: pod.renderSequence,
+                duration: pod.duration,
+                tracking: [],
+                ads: [],
+                id: pod.id
+            }
+            
+            ' Copy any additional pod fields that might exist
+            m.copyAdditionalFields(pod, filteredPod)
+            
+            for each ad in pod.ads
+                filteredAd = {
+                    duration: ad.duration,
+                    streamFormat: ad.streamFormat,
+                    adServer: ad.adServer,
+                    streams: [],
+                    tracking: [],
+                    id: ad.id
+                }
+                
+                ' Copy streams array
+                if ad.streams <> invalid
+                    filteredAd.streams = ad.streams
+                end if
+                
+                ' Copy any additional ad fields that might exist
+                m.copyAdditionalFields(ad, filteredAd)
+                
+                ' Filter tracking events - only include untriggered ones
+                for each trackingEvent in ad.tracking
+                    if not trackingEvent.triggered
+                        ' Create a copy of the event to avoid modifying the original
+                        filteredEvent = {}
+                        for each key in trackingEvent
+                            filteredEvent[key] = trackingEvent[key]
+                        end for
+                        filteredAd.tracking.push(filteredEvent)
+                    end if
+                end for
+                
+                ' Always include the ad even if all beacons are triggered
+                filteredPod.ads.push(filteredAd)
+            end for
+
+            ' Always include the pod to maintain chronological order
+            filteredBreaks.push(filteredPod)
+        end for
+        
+        return filteredBreaks
+    end function
+
+    ' Helper method to copy additional fields from source to target
+    private sub copyAdditionalFields(source as object, target as object)
+        if source = invalid or target = invalid
+            return
+        end if
+        
+        for each key in source
+            if not target.doesExist(key)
+                target[key] = source[key]
+            end if
+        end for
+    end sub
+
+    function findPodById(pods as object, podId as string)
+        if pods = invalid
+            return invalid
+        end if
+        for each pod in pods
+            if pod.id = podId
+                return pod
+            end if
+        end for
+        return invalid
+    end function
+
+    function findAdById(ads as object, adId as string)
+        if ads = invalid
+            return invalid
+        end if
+        for each ad in ads
+            if ad.id = adId
+                return ad
+            end if
+        end for
+        return invalid
+    end function
+
+    ' Find tracking event by event type and time
+    function findTrackingEvent(tracking as object, eventType as string, eventTime as dynamic)
+        if tracking = invalid
+            return invalid
+        end if
+        for each event in tracking
+            if event.event = eventType
+                ' Check if both have time field and they match, or both don't have time field
+                eventHasTime = event.doesExist("time") and event.time <> invalid
+                eventTimeMatches = eventHasTime and eventTime <> invalid and event.time = eventTime
+                bothHaveNoTime = not event.doesExist("time") and eventTime = invalid
+                
+                if eventTimeMatches or bothHaveNoTime
+                    return event
+                end if
+            end if
+        end for
+        return invalid
+    end function
+
+end class
