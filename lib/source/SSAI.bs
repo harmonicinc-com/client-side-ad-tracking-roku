@@ -49,12 +49,9 @@ class RAFX_SSAI
     private logLevel = 0
     private roku_ads
     private lastPingTime = 0
-    private lastDataStartTime = 0
-    private lastDataEndTime = 0
 
     private PING_INTERVAL_SEC = 4
     private DEFAULT_POD_RETENTION_SEC = 60 * 60 * 2 ' 2 hours
-    private EARLY_FETCH_SEC = 5
 
     private adsInProgress = false
 
