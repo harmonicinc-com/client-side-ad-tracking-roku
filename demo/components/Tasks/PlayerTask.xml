@@ -4,7 +4,7 @@
 <component name = "playerTask" extends = "Task">
     <interface>
         <field id="video" type="Node" />
-        <field id="errors" type="stringarray" />
+        <field id="errors" type="array" />
         <field id="adExited" type="boolean" />
         <field id="adPods" type="array" />
     </interface>
