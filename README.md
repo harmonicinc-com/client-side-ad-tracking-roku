@@ -103,15 +103,27 @@
    See [PlayerTask](https://github.com/harmonicinc-com/client-side-ad-tracking-roku/blob/main/demo/components/Tasks/PlayerTask.bs#L28) in the example app for reference
 
    The returned URL is different from the original stream URL. If the returned URL is not used, the SSAI and ad beacons may misalign with the video playback, or beacons will not be fired at all.
-5. (Optional) Add event listeners. Currently only change on pods will be emitted:
+5. (Optional) Add event listeners. Available events include pods and errors:
    ```
    adapter.addEventListener(adapter.AdEvent.PODS, podsCallback)
+   adapter.addEventListener(adapter.AdEvent.ERROR, errorCallback)
 
    sub podsCallback(event as object)
        ' Your code here. Get pods by event.adPods
    end sub
 
+   sub errorCallback(errorInfo as object)
+       ' Handle errors: errorInfo.errorType, errorInfo.message, errorInfo.details
+   end sub
    ```
+
+   **Available Error Types:**
+   - `InitRequestFailed` - Session initialization request failed
+   - `ManifestRequestFailed` - Manifest request failed  
+   - `MetadataRequestFailed` - Ad metadata request failed
+   - `InvalidResponseFormat` - Response format parsing failed
+   - `ParsingError` - Metadata parsing error
+   - `InvalidStreamUrl` - Stream URL construction failed
 6. Create message port and add it to the adapter. 
    
    Note that the adapter currently **does not support custom ad beacon firing** at the time of writing. The adapter will handle all the tracking beacons by itself.

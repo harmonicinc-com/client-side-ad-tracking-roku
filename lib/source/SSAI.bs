@@ -25,6 +25,15 @@ class RAFX_SSAI
         ERROR: "Error"
     }
 
+    ErrorType = {
+        INIT_REQUEST_FAILED: "InitRequestFailed",
+        MANIFEST_REQUEST_FAILED: "ManifestRequestFailed",
+        METADATA_REQUEST_FAILED: "MetadataRequestFailed",
+        INVALID_RESPONSE_FORMAT: "InvalidResponseFormat",
+        PARSING_ERROR: "ParsingError",
+        INVALID_STREAM_URL: "InvalidStreamUrl"
+    }
+
     private msgType = {
         UNKNOWN: 0,
         POSITION: 1,
@@ -58,6 +67,9 @@ class RAFX_SSAI
     sub new()
         m.initResponseParser = new InitResponseParser()
         m.metadataParser = new MetadataParser()
+        m.metadataParser.setErrorCallback(sub(errorType, message, details)
+            m.triggerError(errorType, message, details)
+        end sub)
         m.dashParser = new DashParser()
         m.hlsParser = new HlsParser()
         m.podHelper = new PodHelper()
@@ -122,11 +134,13 @@ class RAFX_SSAI
                         result.ssai = m.rafMetadata <> invalid
                     else
                         m.log("Failed to construct stream URL from initInfo.")
+                        m.triggerError(m.ErrorType.INVALID_STREAM_URL, "Failed to construct stream URL from init info", { url: url })
                     end if
 
                     return result
                 else
                     m.log("init request failed, falling back to obtaining manifest directly")
+                    m.triggerError(m.ErrorType.INIT_REQUEST_FAILED, "Init request failed, falling back to manifest request", { url: url })
                 end if
             end if
 
@@ -190,9 +204,11 @@ class RAFX_SSAI
                 return result
             else
                 m.log("GET init request succeeded but failed to parse URLs, falling back to POST request")
+                m.triggerError(m.ErrorType.INVALID_RESPONSE_FORMAT, "Failed to parse URLs from GET init response", { response: initResponse.json })
             end if
         else
             m.log("GET init request failed, falling back to POST request")
+            m.triggerError(m.ErrorType.INIT_REQUEST_FAILED, "GET init request failed", { statusCode: initResponse?.statusCode, url: getUrl })
         end if
 
         ' Fallback to POST init request
@@ -200,6 +216,7 @@ class RAFX_SSAI
 
         if initResponse = invalid or not initResponse.ok or initResponse.statusCode <> 200
             m.log("POST init request failed with status code: " + initResponse.statusCode.tostr())
+            m.triggerError(m.ErrorType.INIT_REQUEST_FAILED, "POST init request failed", { statusCode: initResponse?.statusCode, url: url })
             ' Should fallback parsing manifest
         else
             ' Parse the urls from the response
@@ -225,6 +242,13 @@ class RAFX_SSAI
             r = rokurequests_Requests().get(m.metadataUrl)
             if r.ok and r.statusCode = 200 and r.headers?.["content-type"] = "application/json" and r.json <> invalid
                 return m.metadataParser.parseMetadata(r.json)
+            else
+                m.log("Metadata request failed with status code: " + r.statusCode.tostr())
+                m.triggerError(m.ErrorType.METADATA_REQUEST_FAILED, "Metadata request failed", { 
+                    statusCode: r?.statusCode, 
+                    url: m.metadataUrl,
+                    contentType: r?.headers?.["content-type"]
+                })
             end if
         end if
         return invalid
@@ -374,9 +398,15 @@ class RAFX_SSAI
     ' - m.PING_INTERVAL_SEC passed since last fetch
     private sub onPosition(msg as object)
         forcePing = false
-        if m.metadataParser.startTime = 0 and m.player.sgNode.positioninfo.video > 0 and m.player.sgNode.position > 0
-            m.metadataParser.startTime.setLongInt(m.player.sgNode.positioninfo.video - m.player.sgNode.position)
-            forcePing = true
+        if m.metadataParser <> invalid and m.metadataParser.startTime <> invalid
+            if m.metadataParser.startTime = 0
+                playerVideo = m.player?.sgNode?.positioninfo?.video ?? 0
+                playerPosition = m.player?.sgNode?.position ?? 0
+                if playerVideo > 0 and playerPosition > 0
+                    m.metadataParser.startTime.setLongInt(playerVideo - playerPosition)
+                    forcePing = true
+                end if
+            end if
         end if
         currentTime = createObject("roDateTime").AsSeconds()
         if (forcePing or (currentTime - m.lastPingTime > m.PING_INTERVAL_SEC)) and not m.adsInProgress
@@ -404,6 +434,18 @@ class RAFX_SSAI
         end if
         return invalid
     end function
+
+    ' Helper function to trigger error callbacks
+    private sub triggerError(errorType as string, message as string, details = invalid as dynamic)
+        errorInfo = {
+            event: m.AdEvent.ERROR,
+            errorType: errorType,
+            message: message,
+            timestamp: CreateObject("roDateTime").AsSeconds(),
+            details: details
+        }
+        m.doCall(m.AdEvent.ERROR, errorInfo)
+    end sub
 
     private sub doCall(event as string, adInfo as object)
         if m.callbacks[event] <> invalid
