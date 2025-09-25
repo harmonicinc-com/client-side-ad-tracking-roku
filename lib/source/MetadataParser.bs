@@ -1,6 +1,22 @@
 class MetadataParser
     startTime = createObject("roLongInteger")
     availabilityStartTime = createObject("roLongInteger")
+    private errorCallback = invalid
+    private parsingErrorType = "PARSING_ERROR" ' Default fallback
+
+    sub setErrorCallback(callback as function)
+        m.errorCallback = callback
+    end sub
+
+    sub setParsingErrorType(errorType as string)
+        m.parsingErrorType = errorType
+    end sub
+
+    private sub triggerError(errorType as string, message as string, details = invalid as dynamic)
+        if m.errorCallback <> invalid
+            m.errorCallback(errorType, message, details)
+        end if
+    end sub
 
     function parseMetadata(metadata)
         result = {
@@ -65,6 +81,11 @@ class MetadataParser
 
     sub parseEvents(tracking as object, events as object)
         for each event in events
+            if event.signalingUrls = invalid or event.signalingUrls.count() = 0
+                ' No signaling URLs, skip
+                m.triggerError(m.parsingErrorType, "Event has no signaling URLs", { event: event })
+                continue for
+            end if
             ' Append extra event for each signaling URL
             for each url in event.signalingUrls
                 rafEvent = {

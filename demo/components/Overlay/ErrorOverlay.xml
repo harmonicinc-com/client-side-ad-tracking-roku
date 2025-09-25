@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!-- This component displays error messages in a red overlay that auto-hides after a timeout -->
+
+<component name="ErrorOverlay" extends="Group">
+    <interface>
+        <field id="errors" type="array" onChange="onErrorsUpdated" />
+    </interface>
+    <script type="text/brightscript" uri="ErrorOverlay.bs" />
+    <children>
+        <!-- Error display container - always bottom-left -->
+        <Group id="errorGroup" visible="false" translation="[15,800]">
+            <rectangle id="errorBackground" width="600" height="200" color="0xCC0000AA">
+                <Label text="SSAI ERROR" font="font:SmallBoldSystemFont" translation="[15,10]" color="0xFFFFFFFF" />
+                <Label id="errorType" text="" font="font:SmallBoldSystemFont" translation="[15,50]" width="570" wrap="true" color="0xFFFFFFFF" />
+                <Label id="errorMessage" text="" font="font:SmallSystemFont" translation="[15,90]" width="570" wrap="true" height="60" color="0xFFFFFFFF" />
+
+                <!-- Auto-close countdown -->
+                <Label text="Auto-close in: " font="font:SmallSystemFont" translation="[15,150]" width="250" color="0xCCCCCCFF" />
+                <Label id="countdown" text="10s" font="font:SmallSystemFont" translation="[270,150]" width="100" color="0xCCCCCCFF" />
+            </rectangle>
+        </Group>
+    </children>
+</component>

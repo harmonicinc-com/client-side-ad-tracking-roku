@@ -11,17 +11,28 @@ sub init()
     m.adBeaconOverlay.video = m.video
     m.video.AppendChild(m.adBeaconOverlay)
 
+    ' Init error overlay
+    m.errorOverlay = CreateObject("roSGNode", "ErrorOverlay")
+    m.video.AppendChild(m.errorOverlay)
+
     ' Start player task
     m.playerTask = createObject("roSGNode", "PlayerTask")
     m.playerTask.video = m.video
     m.playerTask.control = "run"
     m.playerTask.observeField("adExited", "onAdExited")
     m.playerTask.observeField("adPods", "onAdPodsUpdated")
+    m.playerTask.observeField("errors", "onErrorsUpdated")
 end sub
 
 sub onAdPodsUpdated()
     if m.adBeaconOverlay <> invalid
         m.adBeaconOverlay.pods = m.playerTask.adPods
+    end if
+end sub
+
+sub onErrorsUpdated()
+    if m.errorOverlay <> invalid
+        m.errorOverlay.errors = m.playerTask.errors
     end if
 end sub
 

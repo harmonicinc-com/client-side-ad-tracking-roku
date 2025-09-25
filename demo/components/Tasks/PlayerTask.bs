@@ -10,6 +10,7 @@ sub init()
     m.top.adExited = false
     m.top.functionName = "runTask"
     m.top.adPods = []
+    m.top.errors = []
     m.ssai = false
 end sub
 
@@ -88,6 +89,7 @@ sub addCallbacks(adapter as object)
     adapter.addEventListener(adapter.AdEvent.THIRD_QUARTILE, adEventCallback)
     adapter.addEventListener(adapter.AdEvent.COMPLETE, adEventCallback)
     adapter.addEventListener(adapter.AdEvent.POD_END, podEndCallback)
+    adapter.addEventListener(adapter.AdEvent.ERROR, errorCallback)
 end sub
 
 sub podsCallback(event as object)
@@ -101,4 +103,27 @@ sub adEventCallback()
 end sub
 
 sub podEndCallback()
+end sub
+
+sub errorCallback(errorInfo as object)
+    ' Create new array to ensure observer triggers
+    newErrors = []
+    
+    ' Copy existing errors (keep last 9 to make room for new one)
+    if m.top.errors.count() > 0
+        startIndex = 0
+        if m.top.errors.count() >= 10
+            startIndex = m.top.errors.count() - 9
+        end if
+        
+        for i = startIndex to m.top.errors.count() - 1
+            newErrors.push(m.top.errors[i])
+        end for
+    end if
+    
+    ' Add new error
+    newErrors.push(errorInfo)
+    
+    ' Assign new array to trigger observer
+    m.top.errors = newErrors
 end sub

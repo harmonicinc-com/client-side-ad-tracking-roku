@@ -1,0 +1,69 @@
+sub init()
+    m.errorGroup = m.top.findNode("errorGroup")
+    m.errorType = m.top.findNode("errorType")
+    m.errorMessage = m.top.findNode("errorMessage")
+    m.countdown = m.top.findNode("countdown")
+    
+    m.lastErrorTime = 0
+    m.hideTimer = invalid
+end sub
+
+sub onErrorsUpdated()
+    if m.top.errors <> invalid and m.top.errors.count() > 0
+        showLatestError()
+    end if
+end sub
+
+sub showLatestError()
+    ' Get the latest error
+    latestError = m.top.errors[m.top.errors.count() - 1]
+    
+    ' Update display
+    m.errorType.text = latestError.errorType
+    m.errorMessage.text = latestError.message
+    
+    ' Show the error
+    m.errorGroup.visible = true
+    m.lastErrorTime = CreateObject("roDateTime").AsSeconds()
+    
+    ' Start countdown timer
+    startCountdownTimer()
+end sub
+
+sub startCountdownTimer()
+    ' Cancel existing timer if any
+    if m.hideTimer <> invalid
+        m.hideTimer.unobserveField("fire")
+        m.hideTimer = invalid
+    end if
+    
+    ' Create new timer
+    m.hideTimer = CreateObject("roSGNode", "Timer")
+    m.hideTimer.repeat = true
+    m.hideTimer.duration = 1.0 ' Fire every second
+    m.hideTimer.observeField("fire", "onTimerFire")
+    m.hideTimer.control = "start"
+end sub
+
+sub onTimerFire()
+    currentTime = CreateObject("roDateTime").AsSeconds()
+    timeElapsed = currentTime - m.lastErrorTime
+    timeRemaining = 10 - timeElapsed
+    
+    if timeRemaining <= 0
+        hideError()
+    else
+        m.countdown.text = timeRemaining.toStr() + "s"
+    end if
+end sub
+
+sub hideError()
+    m.errorGroup.visible = false
+    
+    ' Stop and cleanup timer
+    if m.hideTimer <> invalid
+        m.hideTimer.control = "stop"
+        m.hideTimer.unobserveField("fire")
+        m.hideTimer = invalid
+    end if
+end sub
