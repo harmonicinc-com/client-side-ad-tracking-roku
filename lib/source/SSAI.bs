@@ -70,6 +70,8 @@ class RAFX_SSAI
         m.metadataParser.setErrorCallback(sub(errorType, message, details)
             m.triggerError(errorType, message, details)
         end sub)
+        ' Set the parsing error type on the parser
+        m.metadataParser.setParsingErrorType(m.ErrorType.PARSING_ERROR)
         m.dashParser = new DashParser()
         m.hlsParser = new HlsParser()
         m.podHelper = new PodHelper()

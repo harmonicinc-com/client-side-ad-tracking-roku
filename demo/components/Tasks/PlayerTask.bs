@@ -1,6 +1,6 @@
 import "pkg:/source/roku_modules/harmonicinc_vos_roku_rafx_ssai/SSAI.bs"
 library "Roku_Ads.brs"
-const url = "https://manifest-alchemist-mleung-01.nebula.video/variant/v1/hls/index.m3u8"
+const url = ""
 const options = {
     initRequest: true,
     podRetentionSec: 60 * 60 * 2 ' 2 hours
