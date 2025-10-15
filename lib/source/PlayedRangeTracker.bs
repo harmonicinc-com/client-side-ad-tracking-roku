@@ -133,10 +133,6 @@ class PlayedRangeTracker
     end function
 
     ' Helper functions
-    private function rangesOverlap(start1 as float, end1 as float, start2 as float, end2 as float) as boolean
-        return start1 < end2 and start2 < end1
-    end function
-
     private function max(a as float, b as float) as float
         if a > b then return a
         return b
