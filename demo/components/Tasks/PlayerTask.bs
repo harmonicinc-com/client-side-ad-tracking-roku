@@ -3,7 +3,8 @@ library "Roku_Ads.brs"
 const url = ""
 const options = {
     initRequest: true,
-    podRetentionSec: 60 * 60 * 2 ' 2 hours
+    podRetentionSec: 60 * 60 * 2, ' 2 hours
+    pingIntervalSec: 4 ' 4 seconds
 }
 
 sub init()

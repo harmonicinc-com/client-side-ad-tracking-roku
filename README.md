@@ -81,16 +81,22 @@
    > By setting the `initRequest` to `true`, you may omit the `sessid` query param in the URL provided to the adapter, and let the SSAI service generate a session ID for you.
    
    ### podRetentionSec
-   How long to cache the ad metadata.
+   How long to cache the ad metadata in seconds.
 
    By default, this will be 7200 (2 hours). You may set `podRetentionSec` to other values.
+   
+   ### pingIntervalSec
+   The interval for metadata polling in seconds.
+
+   By default, this will be 4 seconds. You may set `pingIntervalSec` to other values to control how frequently the adapter checks for new ad metadata.
    
    ### Example usage of options
 
    ```
    options = {
       initRequest: false,
-      podRetentionSec: 3600
+      podRetentionSec: 3600,
+      pingIntervalSec: 5
    }
    result = adapter.getStreamInfo(m.top.video.content.url, options)
    ```
@@ -124,6 +130,7 @@
    - `InvalidResponseFormat` - Response format parsing failed
    - `ParsingError` - Metadata parsing error
    - `InvalidStreamUrl` - Stream URL construction failed
+   - `LateBeaconFailed` - Late beacon firing failed
 6. Create message port and add it to the adapter. 
    
    Note that the adapter currently **does not support custom ad beacon firing** at the time of writing. The adapter will handle all the tracking beacons by itself.

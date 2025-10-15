@@ -6,6 +6,8 @@ import "PodHelper.bs"
 import "HlsParser.bs"
 import "UrlResolver.bs"
 import "MergeHelper.bs"
+import "PlayedRangeTracker.bs"
+import "LateBeaconHandler.bs"
 
 class RAFX_SSAI
     __name__ = "harmonic"
@@ -31,7 +33,8 @@ class RAFX_SSAI
         METADATA_REQUEST_FAILED: "MetadataRequestFailed",
         INVALID_RESPONSE_FORMAT: "InvalidResponseFormat",
         PARSING_ERROR: "ParsingError",
-        INVALID_STREAM_URL: "InvalidStreamUrl"
+        INVALID_STREAM_URL: "InvalidStreamUrl",
+        LATE_BEACON_FAILED: "LateBeaconFailed"
     }
 
     private msgType = {
@@ -55,11 +58,14 @@ class RAFX_SSAI
     private hlsParser
     private podHelper
     private mergeHelper
+    private playedRangeTracker
+    private lateBeaconHandler
     private logLevel = 0
     private roku_ads
     private lastPingTime = 0
 
-    private PING_INTERVAL_SEC = 4
+    private pingIntervalSec = 4
+    private DEFAULT_PING_INTERVAL_SEC = 4
     private DEFAULT_POD_RETENTION_SEC = 60 * 60 * 2 ' 2 hours
 
     private adsInProgress = false
@@ -76,12 +82,50 @@ class RAFX_SSAI
         m.hlsParser = new HlsParser()
         m.podHelper = new PodHelper()
         m.mergeHelper = new MergeHelper()
+        m.playedRangeTracker = new PlayedRangeTracker()
+        m.lateBeaconHandler = new LateBeaconHandler()
+        m.lateBeaconHandler.setErrorCallback(sub(errorType, message, details)
+            m.triggerError(errorType, message, details)
+        end sub)
+        ' Set the beacon error type on the handler
+        m.lateBeaconHandler.setBeaconErrorType(m.ErrorType.LATE_BEACON_FAILED)
         m.roku_ads = Roku_Ads()
     end sub
 
+    private function parseOptions(options as object) as object
+        parsedOptions = {
+            initRequest: true,
+            podRetentionSec: m.DEFAULT_POD_RETENTION_SEC,
+            pingIntervalSec: m.DEFAULT_PING_INTERVAL_SEC
+        }
+
+        if options = invalid
+            return parsedOptions
+        end if
+
+        ' Parse initRequest
+        if options["initRequest"] <> invalid
+            parsedOptions.initRequest = options["initRequest"]
+        end if
+
+        ' Parse podRetentionSec
+        if options["podRetentionSec"] <> invalid and options["podRetentionSec"] > 0
+            parsedOptions.podRetentionSec = options["podRetentionSec"]
+        end if
+
+        ' Parse pingIntervalSec
+        if options["pingIntervalSec"] <> invalid and options["pingIntervalSec"] > 0
+            parsedOptions.pingIntervalSec = options["pingIntervalSec"]
+        end if
+
+        return parsedOptions
+    end function
+
     ' param: URL - Live URL w/ sessId query param
     ' param: options - object - Options for the request (optional)
-    '   - initRequest - boolean - True if the session init API should be called first to initialize the session.
+    '   - initRequest - boolean - True if the session init API should be called first to initialize the session. Default: true
+    '   - podRetentionSec - integer - How long to cache ad metadata in seconds. Default: 7200 (2 hours)
+    '   - pingIntervalSec - integer - Interval for metadata polling in seconds. Default: 4
     ' return assocarray:
     ' - ssai: boolean - True if SSAI is detected, false otherwise
     ' - streamUrl: string | invalid - Personalized stream URL with session ID.
@@ -92,19 +136,11 @@ class RAFX_SSAI
             streamUrl: invalid
         }
 
-        if options = invalid
-            options = {}
-        end if
-        initRequest = options["initRequest"]
-        if initRequest = invalid
-            ' Default to use initRequest
-            initRequest = true
-        end if
-        if options["podRetentionSec"] <> invalid and options["podRetentionSec"] > 0
-            m.podRetentionSec = options["podRetentionSec"]
-        else
-            m.podRetentionSec = m.DEFAULT_POD_RETENTION_SEC
-        end if
+        ' Parse options with defaults
+        parsedOptions = m.parseOptions(options)
+        m.podRetentionSec = parsedOptions.podRetentionSec
+        m.pingIntervalSec = parsedOptions.pingIntervalSec
+        initRequest = parsedOptions.initRequest
 
         if /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)(?:\/pmm-[^\/]*)?\/variant/.isMatch(url)
             ' Extract hostname and base path in one go
@@ -334,6 +370,16 @@ class RAFX_SSAI
         m.log(`syncTriggeredStatesFromRAF(): ${triggeredEvents}/${totalEvents} events marked as triggered`)
     end sub
 
+    ' Process late metadata and fire beacons for already played ads
+    private sub processLateMetadata(adBreaks as object)
+        if adBreaks = invalid or adBreaks.count() = 0 then return
+        
+        if m.lateBeaconHandler <> invalid
+            m.lateBeaconHandler.init(m.playedRangeTracker, m.log)
+            m.lateBeaconHandler.processLateMetadata(adBreaks)
+        end if
+    end sub
+
     ' params:
     ' - player: Player params
     '   - sgNode: Video node
@@ -384,26 +430,22 @@ class RAFX_SSAI
         ' WIP
     end sub
 
-    private function getMpdTime() as longinteger
-        time = createObject("roLongInteger")
-        playheadEpochTime = createObject("roDateTime").AsSeconds()
-        if m.player?.sgNode?.positioninfo?.video ?? 0 > 0
-            playheadEpochTime = m.player.sgNode.positioninfo.video
-        end if
-        time.setLongInt(playheadEpochTime - (m.metadataParser?.availabilityStartTime ?? 0))
-        return time
-    end function
-
     ' Criteria to trigger metadata fetch
     ' - Ads not playing (as mutating the pods will trigger Roku to refire all events), AND
     ' - m.metadataParser.startTime = 0 (first fetch only), OR
-    ' - m.PING_INTERVAL_SEC passed since last fetch
+    ' - m.pingIntervalSec passed since last fetch
     private sub onPosition(msg as object)
+        playerPosition = m.player?.sgNode?.position ?? 0
+        
+        ' Track played position for late metadata handling
+        if playerPosition > 0 and m.playedRangeTracker <> invalid
+            m.playedRangeTracker.trackPosition(playerPosition)
+        end if
+        
         forcePing = false
         if m.metadataParser <> invalid and m.metadataParser.startTime <> invalid
             if m.metadataParser.startTime = 0
                 playerVideo = m.player?.sgNode?.positioninfo?.video ?? 0
-                playerPosition = m.player?.sgNode?.position ?? 0
                 if playerVideo > 0 and playerPosition > 0
                     m.metadataParser.startTime.setLongInt(playerVideo - playerPosition)
                     forcePing = true
@@ -411,13 +453,22 @@ class RAFX_SSAI
             end if
         end if
         currentTime = createObject("roDateTime").AsSeconds()
-        if (forcePing or (currentTime - m.lastPingTime > m.PING_INTERVAL_SEC)) and not m.adsInProgress
+        if (forcePing or (currentTime - m.lastPingTime > m.pingIntervalSec)) and not m.adsInProgress
             newAds = m.requestMetadata()
             ' Ads are invalid if playhead is outside time range
             if newAds <> invalid
                 m.mergePods(newAds)
+
+                ' Fire beacons for already played ads
+                m.processLateMetadata(m.rafMetadata.adBreaks)
+                
                 m.setRAFAdPods(m.rafMetadata.adBreaks)
                 m.lastPingTime = currentTime
+            end if
+
+            ' Clean up old played ranges
+            if m.playedRangeTracker <> invalid
+                m.playedRangeTracker.cleanupOldRanges(playerPosition, m.podRetentionSec)
             end if
         end if
     end sub
