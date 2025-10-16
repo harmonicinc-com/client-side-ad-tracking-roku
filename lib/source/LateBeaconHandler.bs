@@ -87,7 +87,7 @@ class LateBeaconHandler
         if r.ok and r.statusCode = 200
             m.log("fireBeacon() Beacon fired: " + url)
         else
-            m.log("fireBeacon() Failed to fire beacon: " + url + " (status: " + r?.statusCode.toStr() + ")")
+            m.log("fireBeacon() Failed to fire beacon: " + url + " (status: " + (r?.statusCode ?? 0).toStr() + ")")
             m.triggerError(m.beaconErrorType, "Failed to fire late beacon", { statusCode: r?.statusCode, url: url })
         end if
     end sub

@@ -9,6 +9,9 @@ import "MergeHelper.bs"
 import "PlayedRangeTracker.bs"
 import "LateBeaconHandler.bs"
 
+const DEFAULT_PING_INTERVAL_SEC = 4
+const DEFAULT_POD_RETENTION_SEC = 60 * 60 * 2 ' 2 hours
+
 class RAFX_SSAI
     __name__ = "harmonic"
     AdEvent = {
@@ -51,7 +54,6 @@ class RAFX_SSAI
     private callbacks = {}
     private rafMetadata = {}
     private rafAdBreaks = invalid  ' Filtered adBreaks sent to RAF. RAF changes the `triggered` states
-    private podRetentionSec = 0
     private initResponseParser
     private metadataParser
     private dashParser
@@ -63,10 +65,9 @@ class RAFX_SSAI
     private logLevel = 0
     private roku_ads
     private lastPingTime = 0
-
-    private pingIntervalSec = 4
-    private DEFAULT_PING_INTERVAL_SEC = 4
-    private DEFAULT_POD_RETENTION_SEC = 60 * 60 * 2 ' 2 hours
+    
+    private podRetentionSec = DEFAULT_POD_RETENTION_SEC
+    private pingIntervalSec = DEFAULT_PING_INTERVAL_SEC
 
     private adsInProgress = false
 
@@ -95,8 +96,8 @@ class RAFX_SSAI
     private function parseOptions(options as object) as object
         parsedOptions = {
             initRequest: true,
-            podRetentionSec: m.DEFAULT_POD_RETENTION_SEC,
-            pingIntervalSec: m.DEFAULT_PING_INTERVAL_SEC
+            podRetentionSec: DEFAULT_POD_RETENTION_SEC,
+            pingIntervalSec: DEFAULT_PING_INTERVAL_SEC
         }
 
         if options = invalid
