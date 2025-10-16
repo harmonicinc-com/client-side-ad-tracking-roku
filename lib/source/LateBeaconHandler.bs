@@ -1,0 +1,102 @@
+import "pkg:/source/roku_modules/rokurequests/Requests.brs"
+
+class LateBeaconHandler
+    ' Handles beacon firing for ads that were played before metadata arrived
+    
+    private rangeTracker = invalid
+    private logFunc = invalid
+    private logLevel = 0
+    private errorCallback = invalid
+    private beaconErrorType = "LATE_BEACON_FAILED" ' Default fallback
+
+    sub setErrorCallback(callback as function)
+        m.errorCallback = callback
+    end sub
+
+    sub setBeaconErrorType(errorType as string)
+        m.beaconErrorType = errorType
+    end sub
+
+    private sub triggerError(errorType as string, message as string, details = invalid as dynamic)
+        if m.errorCallback <> invalid
+            m.errorCallback(errorType, message, details)
+        end if
+    end sub
+
+    sub init(rangeTracker as object, logger as function)
+        m.rangeTracker = rangeTracker
+        m.logFunc = logger
+    end sub
+
+    ' Process late metadata and fire beacons for already played ads
+    sub processLateMetadata(adBreaks as object)
+        if adBreaks = invalid or m.rangeTracker = invalid then return
+        
+        rangeCount = m.rangeTracker.getRangeCount()
+        if rangeCount = 0 then return
+
+        ranges = m.rangeTracker.getRanges()
+        rangeStart = ranges[0].start
+        rangeEnd = ranges[ranges.count() - 1].end
+
+        m.log("processLateMetadata() Checking " + rangeCount.toStr() + " played ranges (earliest: " + rangeStart.toStr() + " latest: " + rangeEnd.toStr() + ") against new metadata")
+
+        for each pod in adBreaks
+            m.processPod(pod)
+        end for
+    end sub
+
+    ' Process a single pod
+    private sub processPod(pod as object)
+        if pod = invalid or pod.ads = invalid then return
+        
+        ' Process each ad in the pod
+        for each ad in pod.ads
+            m.processAdTracking(ad)
+        end for
+    end sub
+
+    ' Process tracking events for a single ad
+    private sub processAdTracking(ad as object)
+        if ad.tracking = invalid then return
+        
+        for each event in ad.tracking
+            if event.triggered then continue for  ' Skip already triggered events
+
+            shouldFire = false
+
+            ' If the event has a time, check if that time was played
+            if event.doesExist("time")
+                shouldFire = m.rangeTracker.wasTimePlayed(event.time)
+            end if
+            
+            if shouldFire
+                m.log("processAdTracking() Firing " + event.event + " beacon (time: " + event.time.toStr() + ") for ad " + ad.id)
+                m.fireBeacon(event.url)
+                event.triggered = true
+            end if
+        end for
+    end sub
+
+    ' Fire a single beacon
+    private sub fireBeacon(url as string)
+        if url = invalid or url = "" then return
+
+        r = rokurequests_Requests().get(url)
+
+        if r.ok and r.statusCode = 200
+            m.log("fireBeacon() Beacon fired: " + url)
+        else
+            m.log("fireBeacon() Failed to fire beacon: " + url + " (status: " + (r?.statusCode ?? 0).toStr() + ")")
+            m.triggerError(m.beaconErrorType, "Failed to fire late beacon", { statusCode: r?.statusCode, url: url })
+        end if
+    end sub
+
+    ' Logging helper
+    private sub log(message as string)
+        if m.logFunc <> invalid
+            m.logFunc("LateBeaconHandler: " + message)
+        end if
+    end sub
+
+end class
