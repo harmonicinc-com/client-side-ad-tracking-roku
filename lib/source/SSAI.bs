@@ -144,11 +144,6 @@ class RAFX_SSAI
         initRequest = parsedOptions.initRequest
 
         if /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)(?:\/pmm-[^\/]*)?\/variant/.isMatch(url)
-            ' Extract hostname and base path in one go
-            urlParts = /^(?:https?:\/\/)?(?:[^@\/?\n]+@)?(?:www\.)?([^:\/?\n]+)(\/.*?\/)[^\/]+$/g.match(url)
-            hostname = urlParts[1]
-            basePath = urlParts[2]
-
             ' Extract filename with query params and file extension
             fullFilename = /[^\/]+(\?[^\/]*)?$/g.match(url)[0]
             fileExt = /\.(\w{3,4})($|\?)/g.match(url)[1]
@@ -159,8 +154,8 @@ class RAFX_SSAI
                 if initInfo.manifestUrl <> invalid and initInfo.trackingUrl <> invalid
                     m.log(`Response from init request successfully parsed. manifest: ${initInfo.manifestUrl}, metadata: ${initInfo.trackingUrl}`)
 
-                    result.streamUrl = ResolveUrl(hostname, basePath, initInfo.manifestUrl)
-                    m.metadataUrl = ResolveUrl(hostname, basePath, initInfo.trackingUrl)
+                    result.streamUrl = ResolveUrl(url, initInfo.manifestUrl)
+                    m.metadataUrl = ResolveUrl(url, initInfo.trackingUrl)
 
                     if result.streamUrl <> invalid
                         manifest = rokurequests_Requests().get(result.streamUrl)
@@ -199,7 +194,7 @@ class RAFX_SSAI
             end if
     
             if streamUrl <> invalid
-                finalUrl = ResolveUrl(hostname, basePath, streamUrl)
+                finalUrl = ResolveUrl(url, streamUrl)
                 
                 ' Replace filename with metadata, ignore any extension
                 m.metadataUrl = /\/[^\/\.?]+(?:\.[^\/\.?]+)?(\??[^\/]*$)/g.replaceAll(finalUrl, "/metadata\1")
@@ -209,6 +204,47 @@ class RAFX_SSAI
                 result.streamUrl = result.ssai ? /\/[^\/\.?]+(?:\.[^\/\.?]+)?(\??[^\/]*$)/g.replaceAll(finalUrl, "/"+fullFilename+"\1") : invalid
             end if
         end if
+        return result
+    end function
+
+    ' Helper function to handle HTTP request with one redirect follow
+    ' Returns an object with response and finalUrl (after redirect if applicable)
+    private function makeRequestWithRedirect(method as string, url as string, args = invalid as dynamic) as object
+        result = {
+            response: invalid,
+            finalUrl: url
+        }
+        m.log("Making " + method + " request to URL: " + url)
+
+        ' Make initial request
+        requests = rokurequests_Requests()
+        if method = "GET"
+            result.response = requests.get(url, args)
+        else if method = "POST"
+            result.response = requests.post(url, args)
+        end if
+
+        ' Check if we got a redirect (rokurequests keeps the location header for redirected responses)
+        if result.response <> invalid and result.response.statusCode < 400
+            ' Extract Location header for redirect
+            locationHeader = result.response.headers?["location"]
+            if locationHeader <> invalid and locationHeader <> ""
+                m.log("Following redirect to: " + locationHeader)
+                
+                ' Resolve the redirect URL (may be relative or absolute)
+                redirectUrl = ResolveUrl(url, locationHeader)
+
+                ' Follow the redirect (only once)
+                if method = "GET"
+                    result.response = requests.get(redirectUrl, args)
+                else if method = "POST"
+                    result.response = requests.post(redirectUrl, args)
+                end if
+                
+                result.finalUrl = redirectUrl
+            end if
+        end if
+
         return result
     end function
 
@@ -225,8 +261,11 @@ class RAFX_SSAI
         else
             getUrl = url + "?initSession=true"
         end if
-        
-        initResponse = rokurequests_Requests().get(getUrl)
+
+        ' Make GET request with redirect support
+        getResult = m.makeRequestWithRedirect("GET", getUrl)
+        initResponse = getResult.response
+        finalUrl = getResult.finalUrl
         
         if initResponse <> invalid and initResponse.ok and initResponse.statusCode = 200
             ' Parse the urls from the response
@@ -238,8 +277,9 @@ class RAFX_SSAI
             
             ' Check if both URLs were successfully parsed
             if manifestUrlPath <> invalid and trackingUrlPath <> invalid
-                result.manifestUrl = manifestUrlPath
-                result.trackingUrl = trackingUrlPath
+                ' Resolve URLs against the final (possibly redirected) base URL
+                result.manifestUrl = ResolveUrl(finalUrl, manifestUrlPath)
+                result.trackingUrl = ResolveUrl(finalUrl, trackingUrlPath)
                 return result
             else
                 m.log("GET init request succeeded but failed to parse URLs, falling back to POST request")
@@ -250,8 +290,10 @@ class RAFX_SSAI
             m.triggerError(m.ErrorType.INIT_REQUEST_FAILED, "GET init request failed", { statusCode: initResponse?.statusCode, url: getUrl })
         end if
 
-        ' Fallback to POST init request
-        initResponse = rokurequests_Requests().post(url, {})
+        ' Fallback to POST init request with redirect support
+        postResult = m.makeRequestWithRedirect("POST", url, {})
+        initResponse = postResult.response
+        finalUrl = postResult.finalUrl
 
         if initResponse = invalid or not initResponse.ok or initResponse.statusCode <> 200
             m.log("POST init request failed with status code: " + initResponse.statusCode.tostr())
@@ -263,13 +305,17 @@ class RAFX_SSAI
 
             ' Extract the manifest and tracking URLs
             manifestUrlPath = m.initResponseParser.getManifestUrl()
-            if manifestUrlPath <> invalid
-                result.manifestUrl = manifestUrlPath
-            end if
-
             trackingUrlPath = m.initResponseParser.getTrackingUrl()
-            if trackingUrlPath <> invalid
-                result.trackingUrl = trackingUrlPath
+            
+            ' Resolve URLs against the final (possibly redirected) base URL
+            if manifestUrlPath <> invalid or trackingUrlPath <> invalid
+                if manifestUrlPath <> invalid
+                    result.manifestUrl = ResolveUrl(finalUrl, manifestUrlPath)
+                end if
+                
+                if trackingUrlPath <> invalid
+                    result.trackingUrl = ResolveUrl(finalUrl, trackingUrlPath)
+                end if
             end if
         end if
 
