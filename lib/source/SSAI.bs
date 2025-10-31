@@ -229,7 +229,7 @@ class RAFX_SSAI
             result.response = requests.post(url, args)
         end if
 
-        ' Check if we got a redirect (the final response statusCode will not be 3xx; the location header is still present)
+        ' Check if we got a redirect (the final response statusCode will not be 3xx; so we only follow redirect if the location header is present)
         if result.response <> invalid and result.response.statusCode < 400
             ' Extract Location header for redirect
             locationHeader = result.response.headers?["location"]
@@ -306,7 +306,7 @@ class RAFX_SSAI
         finalUrl = postResult.finalUrl
 
         if initResponse = invalid or not initResponse.ok or initResponse.statusCode <> 200
-            m.log("POST init request failed with status code: " + initResponse.statusCode.tostr())
+            m.log("POST init request failed with status code: " + initResponse?.statusCode.tostr())
             m.triggerError(m.ErrorType.INIT_REQUEST_FAILED, "POST init request failed", { statusCode: initResponse?.statusCode, url: url })
             ' Should fallback parsing manifest
         else
