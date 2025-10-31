@@ -6,6 +6,10 @@ function ResolveUrl(baseUrl as string, receivedUrl as string) as string
     
     ' Extract hostname and base path in one go
     urlParts = /^(?:https?:\/\/)?(?:[^@\/?\n]+@)?(?:www\.)?([^:\/?\n]+)(\/.*?\/)[^\/]+$/g.match(baseUrl)
+    if urlParts = invalid or urlParts.count() < 3 then
+        ' Could not parse baseUrl
+        return invalid
+    end if
     hostname = urlParts[1]
     basePath = urlParts[2]
 

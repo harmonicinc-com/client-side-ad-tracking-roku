@@ -195,13 +195,18 @@ class RAFX_SSAI
     
             if streamUrl <> invalid
                 finalUrl = ResolveUrl(url, streamUrl)
-                
-                ' Replace filename with metadata, ignore any extension
-                m.metadataUrl = /\/[^\/\.?]+(?:\.[^\/\.?]+)?(\??[^\/]*$)/g.replaceAll(finalUrl, "/metadata\1")
-                
-                m.rafMetadata = m.requestMetadata()
-                result.ssai = m.rafMetadata <> invalid
-                result.streamUrl = result.ssai ? /\/[^\/\.?]+(?:\.[^\/\.?]+)?(\??[^\/]*$)/g.replaceAll(finalUrl, "/"+fullFilename+"\1") : invalid
+
+                if finalUrl <> invalid
+                    ' Replace filename with metadata, ignore any extension
+                    m.metadataUrl = /\/[^\/\.?]+(?:\.[^\/\.?]+)?(\??[^\/]*$)/g.replaceAll(finalUrl, "/metadata\1")
+                    
+                    m.rafMetadata = m.requestMetadata()
+                    result.ssai = m.rafMetadata <> invalid
+                    result.streamUrl = result.ssai ? /\/[^\/\.?]+(?:\.[^\/\.?]+)?(\??[^\/]*$)/g.replaceAll(finalUrl, "/"+fullFilename+"\1") : invalid
+                else
+                    m.log("Failed to resolve final stream URL.")
+                    m.triggerError(m.ErrorType.INVALID_STREAM_URL, "Failed to resolve final stream URL", { url: url })
+                end if
             end if
         end if
         return result
@@ -224,7 +229,7 @@ class RAFX_SSAI
             result.response = requests.post(url, args)
         end if
 
-        ' Check if we got a redirect (rokurequests keeps the location header for redirected responses)
+        ' Check if we got a redirect (the final response statusCode will not be 3xx; the location header is still present)
         if result.response <> invalid and result.response.statusCode < 400
             ' Extract Location header for redirect
             locationHeader = result.response.headers?["location"]
@@ -233,6 +238,11 @@ class RAFX_SSAI
                 
                 ' Resolve the redirect URL (may be relative or absolute)
                 redirectUrl = ResolveUrl(url, locationHeader)
+
+                if redirectUrl = invalid
+                    m.log("Failed to resolve redirect URL from Location header: " + locationHeader)
+                    return result
+                end if
 
                 ' Follow the redirect (only once)
                 if method = "GET"
@@ -308,14 +318,9 @@ class RAFX_SSAI
             trackingUrlPath = m.initResponseParser.getTrackingUrl()
             
             ' Resolve URLs against the final (possibly redirected) base URL
-            if manifestUrlPath <> invalid or trackingUrlPath <> invalid
-                if manifestUrlPath <> invalid
-                    result.manifestUrl = ResolveUrl(finalUrl, manifestUrlPath)
-                end if
-                
-                if trackingUrlPath <> invalid
-                    result.trackingUrl = ResolveUrl(finalUrl, trackingUrlPath)
-                end if
+            if manifestUrlPath <> invalid and trackingUrlPath <> invalid
+                result.manifestUrl = ResolveUrl(finalUrl, manifestUrlPath)
+                result.trackingUrl = ResolveUrl(finalUrl, trackingUrlPath)
             end if
         end if
 
