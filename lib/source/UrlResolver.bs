@@ -1,7 +1,21 @@
-function ResolveUrl(hostname as string, basePath as string, receivedUrl as string) as string
+function ResolveUrl(baseUrl as string, receivedUrl as string) as string
     '  If URL is absolute, use it directly
     if Left(LCase(receivedUrl), 4) = "http"
         return receivedUrl
+    end if
+    
+    ' Extract hostname and base path in one go
+    urlParts = /^(?:https?:\/\/)?(?:[^@\/?\n]+@)?(?:www\.)?([^:\/?\n]+)(\/.*?\/)?[^\/]*$/g.match(baseUrl)
+    if urlParts = invalid or urlParts.count() < 2 then
+        ' Could not parse baseUrl
+        return invalid
+    end if
+    hostname = urlParts[1]
+    basePath = urlParts[2]
+    
+    ' If no base path was captured, default to root "/"
+    if basePath = invalid or basePath = ""
+        basePath = "/"
     end if
 
     ' For root-relative URLs (starting with "/")
