@@ -84,7 +84,7 @@ class LateBeaconHandler
 
         r = rokurequests_Requests().get(url)
 
-        if r.ok and r.statusCode = 200
+        if r.ok and r.statusCode >= 200 and r.statusCode < 300
             m.log("fireBeacon() Beacon fired: " + url)
         else
             m.log("fireBeacon() Failed to fire beacon: " + url + " (status: " + (r?.statusCode ?? 0).toStr() + ")")
