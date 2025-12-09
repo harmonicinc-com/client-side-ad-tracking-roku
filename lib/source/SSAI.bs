@@ -74,9 +74,8 @@ class RAFX_SSAI
     sub new()
         m.initResponseParser = new InitResponseParser()
         m.metadataParser = new MetadataParser()
-        m.metadataParser.setErrorCallback(sub(errorType, message, details)
-            m.triggerError(errorType, message, details)
-        end sub)
+        ' Pass m as context for error callback invocation
+        m.metadataParser.setErrorContext(m)
         ' Set the parsing error type on the parser
         m.metadataParser.setParsingErrorType(m.ErrorType.PARSING_ERROR)
         m.dashParser = new DashParser()
@@ -85,12 +84,21 @@ class RAFX_SSAI
         m.mergeHelper = new MergeHelper()
         m.playedRangeTracker = new PlayedRangeTracker()
         m.lateBeaconHandler = new LateBeaconHandler()
-        m.lateBeaconHandler.setErrorCallback(sub(errorType, message, details)
-            m.triggerError(errorType, message, details)
-        end sub)
+        ' Pass m as context for error callback invocation
+        m.lateBeaconHandler.setErrorContext(m)
         ' Set the beacon error type on the handler
         m.lateBeaconHandler.setBeaconErrorType(m.ErrorType.LATE_BEACON_FAILED)
         m.roku_ads = Roku_Ads()
+    end sub
+
+    ' Handler method for LateBeaconHandler errors
+    sub handleLateBeaconError(errorType as string, message as string, details = invalid as dynamic)
+        m.triggerError(errorType, message, details)
+    end sub
+
+    ' Handler method for MetadataParser errors
+    sub handleMetadataError(errorType as string, message as string, details = invalid as dynamic)
+        m.triggerError(errorType, message, details)
     end sub
 
     private function parseOptions(options as object) as object

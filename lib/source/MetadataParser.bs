@@ -1,11 +1,11 @@
 class MetadataParser
     startTime = createObject("roLongInteger")
     availabilityStartTime = createObject("roLongInteger")
-    private errorCallback = invalid
+    private errorContext = invalid  ' Store the context object for callback invocation
     private parsingErrorType = "PARSING_ERROR" ' Default fallback
 
-    sub setErrorCallback(callback as function)
-        m.errorCallback = callback
+    sub setErrorContext(context as object)
+        m.errorContext = context
     end sub
 
     sub setParsingErrorType(errorType as string)
@@ -13,8 +13,8 @@ class MetadataParser
     end sub
 
     private sub triggerError(errorType as string, message as string, details = invalid as dynamic)
-        if m.errorCallback <> invalid
-            m.errorCallback(errorType, message, details)
+        if m.errorContext <> invalid
+            m.errorContext.handleMetadataError(errorType, message, details)
         end if
     end sub
 
