@@ -10,7 +10,7 @@ function ParseUrl(url as string) as object
         fullPath: invalid
     }
 
-    if url = invalid or url = "" return result
+    if url = invalid or url = "" then return result
 
     remainingUrl = url
 
@@ -36,7 +36,7 @@ function ParseUrl(url as string) as object
         result.fullPath = remainingUrl.Mid(slashIndex + 1)
     else
         hostPart = remainingUrl
-        result.fullPath = "/"
+        result.fullPath = ""
     end if
 
     ' Handle Port
@@ -107,7 +107,7 @@ function ResolveUrl(baseUrl as string, receivedUrl as string) as string
     end if
 
     basePath = parsedBase.path
-    if basePath = invalid basePath = "/"
+    if basePath = invalid then basePath = "/"
 
     ' For root-relative URLs (starting with "/")
     if Left(receivedUrl, 1) = "/"
