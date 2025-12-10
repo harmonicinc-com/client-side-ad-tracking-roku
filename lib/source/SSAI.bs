@@ -152,9 +152,17 @@ class RAFX_SSAI
         initRequest = parsedOptions.initRequest
 
         if /^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)(?:\/pmm-[^\/]*)?\/variant/.isMatch(url)
-            ' Extract filename with query params and file extension
-            fullFilename = /[^\/]+(\?[^\/]*)?$/g.match(url)[0]
-            fileExt = /\.(\w{3,4})($|\?)/g.match(url)[1]
+            ' Extract the path and query parts separately
+            parsedUrl = ParseUrl(url)
+            filename = parsedUrl.filename
+            queryString = parsedUrl.query
+            fileExt = parsedUrl.extension
+
+            ' Reconstruct fullFilename with query params
+            fullFilename = filename
+            if queryString <> invalid and queryString <> ""
+                fullFilename = filename + "?" + queryString
+            end if
 
             ' Get the URLs from the init request if initRequest is true
             if initRequest

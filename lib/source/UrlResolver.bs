@@ -1,36 +1,127 @@
+function ParseUrl(url as string) as object
+    result = {
+        protocol: invalid,
+        host: invalid,
+        port: invalid,
+        path: invalid,
+        filename: invalid,
+        extension: invalid,
+        query: invalid,
+        fullPath: invalid
+    }
+
+    if url = invalid or url = "" then return result
+
+    remainingUrl = url
+
+    ' Extract Query String
+    queryIndex = remainingUrl.Instr("?")
+    if queryIndex >= 0
+        result.query = remainingUrl.Mid(queryIndex + 1)
+        remainingUrl = remainingUrl.Left(queryIndex)
+    end if
+
+    ' Extract Protocol
+    protocolIndex = remainingUrl.Instr("://")
+    if protocolIndex >= 0
+        result.protocol = remainingUrl.Left(protocolIndex + 3)
+        remainingUrl = remainingUrl.Mid(protocolIndex + 3)
+    end if
+
+    ' Extract Host and Port
+    slashIndex = remainingUrl.Instr("/")
+    hostPart = ""
+    if slashIndex >= 0
+        hostPart = remainingUrl.Left(slashIndex)
+        result.fullPath = remainingUrl.Mid(slashIndex + 1)
+    else
+        hostPart = remainingUrl
+        result.fullPath = ""
+    end if
+
+    ' Handle Port
+    colonIndex = hostPart.Instr(":")
+    if colonIndex >= 0
+        result.host = hostPart.Left(colonIndex)
+        result.port = hostPart.Mid(colonIndex + 1)
+    else
+        result.host = hostPart
+    end if
+
+    ' Extract Path (directory) and Filename
+    if result.fullPath <> invalid
+        lastSlashIndex = -1
+        for i = result.fullPath.Len() - 1 to 0 step -1
+            if result.fullPath.Mid(i, 1) = "/"
+                lastSlashIndex = i
+                exit for
+            end if
+        end for
+
+        if lastSlashIndex >= 0
+            result.path = result.fullPath.Left(lastSlashIndex)
+            result.filename = result.fullPath.Mid(lastSlashIndex + 1)
+        else
+            result.path = "/"
+            result.filename = result.fullPath
+        end if
+    end if
+
+    ' Extract Extension
+    if result.filename <> invalid and result.filename <> ""
+        lastDotIndex = -1
+        for i = result.filename.Len() - 1 to 0 step -1
+            if result.filename.Mid(i, 1) = "."
+                lastDotIndex = i
+                exit for
+            end if
+        end for
+        
+        if lastDotIndex >= 0
+            result.extension = result.filename.Mid(lastDotIndex + 1)
+        end if
+    end if
+
+    return result
+end function
+
 function ResolveUrl(baseUrl as string, receivedUrl as string) as string
     '  If URL is absolute, use it directly
     if Left(LCase(receivedUrl), 4) = "http"
         return receivedUrl
     end if
-    
-    ' Extract hostname and base path in one go
-    urlParts = /^(?:https?:\/\/)?(?:[^@\/?\n]+@)?(?:www\.)?([^:\/?\n]+)(\/.*?\/)?[^\/]*$/g.match(baseUrl)
-    if urlParts = invalid or urlParts.count() < 2 then
-        ' Could not parse baseUrl
+
+    parsedBase = ParseUrl(baseUrl)
+    if parsedBase.host = invalid or parsedBase.host = ""
         return invalid
     end if
-    hostname = urlParts[1]
-    basePath = urlParts[2]
-    
-    ' If no base path was captured, default to root "/"
-    if basePath = invalid or basePath = ""
-        basePath = "/"
+
+    protocol = parsedBase.protocol
+    if protocol = invalid
+        protocol = "https://"
     end if
+    
+    hostname = parsedBase.host
+    if parsedBase.port <> invalid
+        hostname = hostname + ":" + parsedBase.port
+    end if
+
+    basePath = parsedBase.path
+    if basePath = invalid then basePath = "/"
 
     ' For root-relative URLs (starting with "/")
     if Left(receivedUrl, 1) = "/"
-        return "https://" + hostname + receivedUrl
+        return protocol + hostname + receivedUrl
     end if
 
     ' For relative URLs with ./ or ../ in the path
     baseSegments = basePath.split("/")
     relSegments = receivedUrl.split("/")
 
-    ' Remove last empty segment if basePath ends with "/"
-    if baseSegments.count() > 0 and baseSegments[baseSegments.count() - 1] = "" then
+    ' Remove empty segments from the end of baseSegments
+    while baseSegments.count() > 0 and baseSegments[baseSegments.count() - 1] = ""
         baseSegments.pop()
-    end if
+    end while
 
     ' Walk through relSegments and resolve ., ..
     for each seg in relSegments
@@ -51,5 +142,5 @@ function ResolveUrl(baseUrl as string, receivedUrl as string) as string
         urlPath = urlPath.Replace("//", "/")
     end while
 
-    return "https://" + hostname + urlPath
+    return protocol + hostname + urlPath
 end function
