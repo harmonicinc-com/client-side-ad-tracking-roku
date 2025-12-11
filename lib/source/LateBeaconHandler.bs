@@ -82,7 +82,8 @@ class LateBeaconHandler
     private sub fireBeacon(url as string)
         if url = invalid or url = "" then return
 
-        r = rokurequests_Requests().get(url)
+        result = MakeRequestWithRedirect("GET", url, invalid, m)
+        r = result.response
 
         if r.ok and r.statusCode >= 200 and r.statusCode < 300
             m.log("fireBeacon() Beacon fired: " + url)
