@@ -1,4 +1,4 @@
-import "pkg:/source/roku_modules/rokurequests/Requests.brs"
+import "UrlResolver.bs"
 
 class LateBeaconHandler
     ' Handles beacon firing for ads that were played before metadata arrived
@@ -82,9 +82,10 @@ class LateBeaconHandler
     private sub fireBeacon(url as string)
         if url = invalid or url = "" then return
 
-        r = rokurequests_Requests().get(url)
+        result = MakeRequestWithRedirect("GET", url, invalid, m)
+        r = result.response
 
-        if r.ok and r.statusCode >= 200 and r.statusCode < 300
+        if r <> invalid and r.ok and r.statusCode >= 200 and r.statusCode < 300
             m.log("fireBeacon() Beacon fired: " + url)
         else
             m.log("fireBeacon() Failed to fire beacon: " + url + " (status: " + (r?.statusCode ?? 0).toStr() + ")")

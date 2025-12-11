@@ -1,3 +1,5 @@
+import "pkg:/source/roku_modules/rokurequests/Requests.brs"
+
 function ParseUrl(url as string) as object
     result = {
         protocol: invalid,
@@ -143,4 +145,57 @@ function ResolveUrl(baseUrl as string, receivedUrl as string) as string
     end while
 
     return protocol + hostname + urlPath
+end function
+
+' Helper function to handle HTTP request with one redirect follow
+' Returns an object with response and finalUrl (after redirect if applicable)
+function MakeRequestWithRedirect(method as string, url as string, args = invalid as dynamic, ctx = invalid as object) as object
+    result = {
+        response: invalid,
+        finalUrl: url
+    }
+
+    if ctx <> invalid and ctx.log <> invalid
+        ctx.log("MakeRequestWithRedirect: Making " + method + " request to URL: " + url)
+    end if
+
+    ' Make initial request
+    requests = rokurequests_Requests()
+    if method = "GET"
+        result.response = requests.get(url, args)
+    else if method = "POST"
+        result.response = requests.post(url, args)
+    end if
+
+    ' Check if we got a redirect (the final response statusCode will not be 3xx; so we only follow redirect if the location header is present)
+    if result.response <> invalid and result.response.ok and result.response.statusCode < 400
+        ' Extract Location header for redirect
+        locationHeader = result.response.headers?["location"]
+        if locationHeader <> invalid and locationHeader <> ""
+            if ctx <> invalid and ctx.log <> invalid
+                ctx.log("MakeRequestWithRedirect: Following redirect to: " + locationHeader)
+            end if
+            
+            ' Resolve the redirect URL (may be relative or absolute)
+            redirectUrl = ResolveUrl(url, locationHeader)
+
+            if redirectUrl = invalid
+                if ctx <> invalid and ctx.log <> invalid
+                    ctx.log("MakeRequestWithRedirect: Failed to resolve redirect URL from Location header: " + locationHeader)
+                end if
+                return result
+            end if
+
+            ' Follow the redirect (only once)
+            if method = "GET"
+                result.response = requests.get(redirectUrl, args)
+            else if method = "POST"
+                result.response = requests.post(redirectUrl, args)
+            end if
+            
+            result.finalUrl = redirectUrl
+        end if
+    end if
+
+    return result
 end function

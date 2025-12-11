@@ -228,52 +228,6 @@ class RAFX_SSAI
         return result
     end function
 
-    ' Helper function to handle HTTP request with one redirect follow
-    ' Returns an object with response and finalUrl (after redirect if applicable)
-    private function makeRequestWithRedirect(method as string, url as string, args = invalid as dynamic) as object
-        result = {
-            response: invalid,
-            finalUrl: url
-        }
-        m.log("Making " + method + " request to URL: " + url)
-
-        ' Make initial request
-        requests = rokurequests_Requests()
-        if method = "GET"
-            result.response = requests.get(url, args)
-        else if method = "POST"
-            result.response = requests.post(url, args)
-        end if
-
-        ' Check if we got a redirect (the final response statusCode will not be 3xx; so we only follow redirect if the location header is present)
-        if result.response <> invalid and result.response.statusCode < 400
-            ' Extract Location header for redirect
-            locationHeader = result.response.headers?["location"]
-            if locationHeader <> invalid and locationHeader <> ""
-                m.log("Following redirect to: " + locationHeader)
-                
-                ' Resolve the redirect URL (may be relative or absolute)
-                redirectUrl = ResolveUrl(url, locationHeader)
-
-                if redirectUrl = invalid
-                    m.log("Failed to resolve redirect URL from Location header: " + locationHeader)
-                    return result
-                end if
-
-                ' Follow the redirect (only once)
-                if method = "GET"
-                    result.response = requests.get(redirectUrl, args)
-                else if method = "POST"
-                    result.response = requests.post(redirectUrl, args)
-                end if
-                
-                result.finalUrl = redirectUrl
-            end if
-        end if
-
-        return result
-    end function
-
     private function getInitRequestInfo(url as string) as object
         result = {
             manifestUrl: invalid,
@@ -289,7 +243,7 @@ class RAFX_SSAI
         end if
 
         ' Make GET request with redirect support
-        getResult = m.makeRequestWithRedirect("GET", getUrl)
+        getResult = MakeRequestWithRedirect("GET", getUrl, invalid, m)
         initResponse = getResult.response
         finalUrl = getResult.finalUrl
         
@@ -317,7 +271,7 @@ class RAFX_SSAI
         end if
 
         ' Fallback to POST init request with redirect support
-        postResult = m.makeRequestWithRedirect("POST", url, {})
+        postResult = MakeRequestWithRedirect("POST", url, {}, m)
         initResponse = postResult.response
         finalUrl = postResult.finalUrl
 
