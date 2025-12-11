@@ -168,7 +168,7 @@ function MakeRequestWithRedirect(method as string, url as string, args = invalid
     end if
 
     ' Check if we got a redirect (the final response statusCode will not be 3xx; so we only follow redirect if the location header is present)
-    if result.response <> invalid and result.response.statusCode < 400
+    if result.response <> invalid and result.response.ok and result.response.statusCode < 400
         ' Extract Location header for redirect
         locationHeader = result.response.headers?["location"]
         if locationHeader <> invalid and locationHeader <> ""
