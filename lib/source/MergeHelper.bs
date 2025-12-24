@@ -65,7 +65,7 @@ class MergeHelper
                 
                 ' Filter tracking events - only include untriggered ones that are not player initiated event beacons
                 for each trackingEvent in ad.tracking
-                    if not trackingEvent.triggered and not IsPlayerInitiatedBeacon(trackingEvent.event)
+                    if not trackingEvent.triggered and not isPlayerInitiatedBeacon(trackingEvent.event)
                         ' Create a copy of the event to avoid modifying the original
                         filteredEvent = {}
                         for each key in trackingEvent

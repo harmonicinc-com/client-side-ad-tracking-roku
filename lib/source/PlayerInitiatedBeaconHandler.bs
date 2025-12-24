@@ -33,12 +33,12 @@ class PlayerInitiatedBeaconHandler
         ' Find the current pod and ad based on player position
         for each pod in adBreaks
             podEnd = pod.renderTime + pod.duration
-            if playerPosition >= pod.renderTime and playerPosition <= podEnd
+            if playerPosition >= pod.renderTime and playerPosition < podEnd
                 ' We're in this pod, find the current ad
                 adStartTime = pod.renderTime
                 for each ad in pod.ads
                     adEndTime = adStartTime + ad.duration
-                    if playerPosition >= adStartTime and playerPosition <= adEndTime
+                    if playerPosition >= adStartTime and playerPosition < adEndTime
                         ' This is the current ad, fire beacons of the specified type
                         m.fireAdBeaconsByType(ad, beaconType)
                         return
@@ -72,7 +72,11 @@ class PlayerInitiatedBeaconHandler
         if r <> invalid and r.ok and r.statusCode >= 200 and r.statusCode < 300
             m.log("fireBeacon() Beacon fired: " + url)
         else
-            m.log("fireBeacon() Failed to fire beacon: " + url + " (status: " + (r?.statusCode ?? 0).toStr() + ")")
+            statusCodeStr = "N/A"
+            if r <> invalid and r.statusCode <> invalid
+                statusCodeStr = r.statusCode.toStr()
+            end if
+            m.log("fireBeacon() Failed to fire beacon: " + url + " (status: " + statusCodeStr + ")")
             m.triggerError(m.beaconErrorType, "Failed to fire beacon", { statusCode: r?.statusCode, url: url })
         end if
     end sub

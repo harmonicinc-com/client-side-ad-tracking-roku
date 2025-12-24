@@ -65,7 +65,7 @@ class LateBeaconHandler
             if event.triggered then continue for  ' Skip already triggered events
 
             ' Skip player initiated beacons - these are fired manually by the app
-            if IsPlayerInitiatedBeacon(event.event) then continue for
+            if isPlayerInitiatedBeacon(event.event) then continue for
 
             shouldFire = false
 
