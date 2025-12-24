@@ -1,3 +1,5 @@
+import "BeaconTypes.bs"
+
 class MergeHelper
 
     sub mergeAds(oldAds as object, newAds as object)
@@ -18,8 +20,10 @@ class MergeHelper
         end for
     end sub
 
-    ' Filter out already triggered beacons from ads before sending to RAF
-    function filterTriggeredBeacons(adBreaks as object) as object
+    ' Filter beacons before sending to RAF:
+    ' - Removes already triggered beacons
+    ' - Removes player initiated event beacons which are fired manually
+    function filterBeaconsForRAF(adBreaks as object) as object
         if adBreaks = invalid or adBreaks.count() = 0
             return []
         end if
@@ -59,9 +63,9 @@ class MergeHelper
                 ' Copy any additional ad fields that might exist
                 m.copyAdditionalFields(ad, filteredAd)
                 
-                ' Filter tracking events - only include untriggered ones
+                ' Filter tracking events - only include untriggered ones that are not player initiated event beacons
                 for each trackingEvent in ad.tracking
-                    if not trackingEvent.triggered
+                    if not trackingEvent.triggered and not IsPlayerInitiatedBeacon(trackingEvent.event)
                         ' Create a copy of the event to avoid modifying the original
                         filteredEvent = {}
                         for each key in trackingEvent

@@ -13,6 +13,9 @@ sub init()
     m.top.adPods = []
     m.top.errors = []
     m.ssai = false
+    ' Track player states for mute/pause events
+    m.isMuted = false
+    m.isPaused = false
 end sub
 
 sub runTask()
@@ -55,6 +58,7 @@ sub runLoop(adapter as Object)
     m.top.video.observeFieldScoped("position", port)
     m.top.video.observeFieldScoped("control", port)
     m.top.video.observeFieldScoped("state", port)
+    m.top.video.observeFieldScoped("mute", port)
 
     ' Play video
     m.top.video.control = "play"
@@ -64,6 +68,9 @@ sub runLoop(adapter as Object)
         if type(msg) = "roSGNodeEvent" and msg.getField() = "control" and msg.getNode() = m.top.video.id and msg.getData() = "stop" or m.top.video = invalid
             exit while
         end if
+        
+        ' Handle player events for ad beacons
+        handlePlayerEvents(msg, adapter)
         
         curAd = adapter.onMessage(msg)
         if curAd = invalid
@@ -79,6 +86,35 @@ sub runLoop(adapter as Object)
     m.top.video.unobserveFieldScoped("position")
     m.top.video.unobserveFieldScoped("control")
     m.top.video.unobserveFieldScoped("state")
+    m.top.video.unobserveFieldScoped("mute")
+end sub
+
+' Handle player events (mute/unmute, pause/resume) and fire corresponding ad beacons
+sub handlePlayerEvents(msg as object, adapter as object)
+    if type(msg) <> "roSGNodeEvent" or msg.getNode() <> m.top.video.id then return
+    
+    field = msg.getField()
+    data = msg.getData()
+    
+    ' Handle mute/unmute events
+    if field = "mute"
+        if data = true and not m.isMuted
+            m.isMuted = true
+            adapter.onMute()
+        else if data = false and m.isMuted
+            m.isMuted = false
+            adapter.onUnmute()
+        end if
+    ' Handle pause/resume events via state changes
+    else if field = "state"
+        if data = "paused" and not m.isPaused
+            m.isPaused = true
+            adapter.onPause()
+        else if data = "playing" and m.isPaused
+            m.isPaused = false
+            adapter.onResume()
+        end if
+    end if
 end sub
 
 sub addCallbacks(adapter as object)

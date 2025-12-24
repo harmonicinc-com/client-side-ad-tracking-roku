@@ -1,4 +1,5 @@
 import "UrlResolver.bs"
+import "BeaconTypes.bs"
 
 class LateBeaconHandler
     ' Handles beacon firing for ads that were played before metadata arrived
@@ -62,6 +63,9 @@ class LateBeaconHandler
         
         for each event in ad.tracking
             if event.triggered then continue for  ' Skip already triggered events
+
+            ' Skip player initiated beacons - these are fired manually by the app
+            if IsPlayerInitiatedBeacon(event.event) then continue for
 
             shouldFire = false
 
