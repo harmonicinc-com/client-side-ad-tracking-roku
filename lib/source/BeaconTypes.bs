@@ -1,0 +1,16 @@
+' Shared beacon type constants
+
+' Helper function to check if an event type is a player initiated beacon
+function isPlayerInitiatedBeacon(eventType as string) as boolean
+    ' Player initiated beacon types that should not be automatically fired by RAF or late beacon handler
+    ' These are fired manually by the app via (e.g. via onMute/onUnmute/onPause/onResume and explicit click handlers)
+    ' so they must not be emitted by automatic mechanisms.
+    playerInitiatedBeaconTypes = ["mute", "unmute", "pause", "resume", "clickTracking", "clickAbstractType"]
+
+    for each beaconType in playerInitiatedBeaconTypes
+        if eventType = beaconType
+            return true
+        end if
+    end for
+    return false
+end function
