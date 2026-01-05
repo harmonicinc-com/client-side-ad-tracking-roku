@@ -1,0 +1,91 @@
+import "UrlResolver.bs"
+
+class PlayerInitiatedBeaconHandler
+    ' Handles beacon firing for player initiated events (e.g., mute, unmute, pause, resume)
+    
+    private logFunc = invalid
+    private logLevel = 0
+    private errorContext = invalid  ' Store the context object for callback invocation
+    private beaconErrorType = "BEACON_FIRE_FAILED" ' Default fallback
+
+    sub setErrorContext(context as object)
+        m.errorContext = context
+    end sub
+
+    sub setBeaconErrorType(errorType as string)
+        m.beaconErrorType = errorType
+    end sub
+
+    sub setLogFunc(logFunc as function)
+        m.logFunc = logFunc
+    end sub
+
+    private sub triggerError(errorType as string, message as string, details = invalid as dynamic)
+        if m.errorContext <> invalid
+            m.errorContext.handlePlayerInitiatedBeaconError(errorType, message, details)
+        end if
+    end sub
+
+    ' Fire all beacons of a specific type for the currently playing ad
+    sub fireBeaconsByType(beaconType as string, adBreaks as object, playerPosition as float)
+        if adBreaks = invalid then return
+
+        ' Find the current pod and ad based on player position
+        for each pod in adBreaks
+            podEnd = pod.renderTime + pod.duration
+            if playerPosition >= pod.renderTime and playerPosition < podEnd
+                ' We're in this pod, find the current ad
+                adStartTime = pod.renderTime
+                for each ad in pod.ads
+                    adEndTime = adStartTime + ad.duration
+                    if playerPosition >= adStartTime and playerPosition < adEndTime
+                        ' This is the current ad, fire beacons of the specified type
+                        m.fireAdBeaconsByType(ad, beaconType)
+                        return
+                    end if
+                    adStartTime = adEndTime
+                end for
+            end if
+        end for
+    end sub
+
+    ' Fire all beacons of a specific type for a given ad
+    private sub fireAdBeaconsByType(ad as object, beaconType as string)
+        if ad.tracking = invalid then return
+
+        for each event in ad.tracking
+            if event.event = beaconType
+                m.log(`fireAdBeaconsByType() Firing ${beaconType} beacon for ad ${ad.id}`)
+                m.fireBeacon(event.url)
+                event.triggered = true
+            end if
+        end for
+    end sub
+
+    ' Fire a single beacon
+    private sub fireBeacon(url as string)
+        if url = invalid or url = "" then return
+
+        result = MakeRequestWithRedirect("GET", url, invalid, m)
+        r = result.response
+
+        if r <> invalid and r.ok and r.statusCode >= 200 and r.statusCode < 300
+            m.log("fireBeacon() Beacon fired: " + url)
+        else
+            statusCodeStr = "N/A"
+            if r <> invalid and r.statusCode <> invalid
+                statusCodeStr = r.statusCode.toStr()
+            end if
+            m.log("fireBeacon() Failed to fire beacon: " + url + " (status: " + statusCodeStr + ")")
+            m.triggerError(m.beaconErrorType, "Failed to fire beacon", { statusCode: r?.statusCode, url: url })
+        end if
+    end sub
+
+    ' Logging helper
+    private sub log(message as string)
+        if m.logFunc <> invalid
+            m.logFunc("PlayerInitiatedBeaconHandler: " + message)
+        end if
+    end sub
+
+end class

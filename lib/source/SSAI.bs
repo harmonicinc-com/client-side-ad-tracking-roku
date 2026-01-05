@@ -8,6 +8,7 @@ import "UrlResolver.bs"
 import "MergeHelper.bs"
 import "PlayedRangeTracker.bs"
 import "LateBeaconHandler.bs"
+import "PlayerInitiatedBeaconHandler.bs"
 
 const DEFAULT_PING_INTERVAL_SEC = 4
 const DEFAULT_POD_RETENTION_SEC = 60 * 60 * 2 ' 2 hours
@@ -37,7 +38,8 @@ class RAFX_SSAI
         INVALID_RESPONSE_FORMAT: "InvalidResponseFormat",
         PARSING_ERROR: "ParsingError",
         INVALID_STREAM_URL: "InvalidStreamUrl",
-        LATE_BEACON_FAILED: "LateBeaconFailed"
+        LATE_BEACON_FAILED: "LateBeaconFailed",
+        BEACON_FIRE_FAILED: "BeaconFireFailed"
     }
 
     private msgType = {
@@ -62,6 +64,7 @@ class RAFX_SSAI
     private mergeHelper
     private playedRangeTracker
     private lateBeaconHandler
+    private playerInitiatedBeaconHandler
     private logLevel = 0
     private roku_ads
     private lastPingTime = 0
@@ -73,26 +76,42 @@ class RAFX_SSAI
 
     sub new()
         m.initResponseParser = new InitResponseParser()
+
         m.metadataParser = new MetadataParser()
         ' Pass m as context for error callback invocation
         m.metadataParser.setErrorContext(m)
         ' Set the parsing error type on the parser
         m.metadataParser.setParsingErrorType(m.ErrorType.PARSING_ERROR)
+
         m.dashParser = new DashParser()
         m.hlsParser = new HlsParser()
         m.podHelper = new PodHelper()
         m.mergeHelper = new MergeHelper()
         m.playedRangeTracker = new PlayedRangeTracker()
+
         m.lateBeaconHandler = new LateBeaconHandler()
         ' Pass m as context for error callback invocation
         m.lateBeaconHandler.setErrorContext(m)
         ' Set the beacon error type on the handler
         m.lateBeaconHandler.setBeaconErrorType(m.ErrorType.LATE_BEACON_FAILED)
+
+        m.playerInitiatedBeaconHandler = new PlayerInitiatedBeaconHandler()
+        ' Pass m as context for error callback invocation
+        m.playerInitiatedBeaconHandler.setErrorContext(m)
+        ' Set the beacon error type on the handler
+        m.playerInitiatedBeaconHandler.setBeaconErrorType(m.ErrorType.BEACON_FIRE_FAILED)
+        m.playerInitiatedBeaconHandler.setLogFunc(m.log)
+
         m.roku_ads = Roku_Ads()
     end sub
 
     ' Handler method for LateBeaconHandler errors
     sub handleLateBeaconError(errorType as string, message as string, details = invalid as dynamic)
+        m.triggerError(errorType, message, details)
+    end sub
+
+    ' Handler method for PlayerInitiatedBeaconHandler errors
+    sub handlePlayerInitiatedBeaconError(errorType as string, message as string, details = invalid as dynamic)
         m.triggerError(errorType, message, details)
     end sub
 
@@ -448,6 +467,38 @@ class RAFX_SSAI
         m.callbacks[event] = callback
     end sub
 
+    ' Fire beacons when player is muted
+    ' Should be called by the app when the player is muted
+    sub onMute()
+        if not m.adsInProgress then return
+        playerPosition = m.player?.sgNode?.position ?? 0
+        m.playerInitiatedBeaconHandler.fireBeaconsByType("mute", m.rafMetadata.adBreaks, playerPosition)
+    end sub
+
+    ' Fire beacons when player is unmuted
+    ' Should be called by the app when the player is unmuted
+    sub onUnmute()
+        if not m.adsInProgress then return
+        playerPosition = m.player?.sgNode?.position ?? 0
+        m.playerInitiatedBeaconHandler.fireBeaconsByType("unmute", m.rafMetadata.adBreaks, playerPosition)
+    end sub
+
+    ' Fire beacons when player is paused
+    ' Should be called by the app when the player is paused
+    sub onPause()
+        if not m.adsInProgress then return
+        playerPosition = m.player?.sgNode?.position ?? 0
+        m.playerInitiatedBeaconHandler.fireBeaconsByType("pause", m.rafMetadata.adBreaks, playerPosition)
+    end sub
+
+    ' Fire beacons when player is resumed
+    ' Should be called by the app when the player is resumed
+    sub onResume()
+        if not m.adsInProgress then return
+        playerPosition = m.player?.sgNode?.position ?? 0
+        m.playerInitiatedBeaconHandler.fireBeaconsByType("resume", m.rafMetadata.adBreaks, playerPosition)
+    end sub
+
     private sub onMetadata(msg as object)
         ' WIP
     end sub
@@ -559,8 +610,8 @@ class RAFX_SSAI
     private sub setRAFAdPods(adBreaks as object)
         if adBreaks <> invalid and 0 < adBreaks.count()
             if m.useStitched
-                ' Create filtered copy for RAF with only untriggered beacons
-                m.rafAdBreaks = m.mergeHelper.filterTriggeredBeacons(adBreaks)
+                ' Create filtered copy for RAF (excludes triggered beacons and player initiated beacons)
+                m.rafAdBreaks = m.mergeHelper.filterBeaconsForRAF(adBreaks)
                 m.roku_ads.stitchedAdsInit(m.rafAdBreaks)
             end if
             ' Use the unfiltered adBreaks (with triggered states synced) for callback
