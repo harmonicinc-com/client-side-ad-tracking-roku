@@ -194,10 +194,10 @@
    ' When the user skips an ad
    adapter.onSkip()
 
-   ' When the player is expanded to fullscreen
+   ' When the player is expanded to a larger size
    adapter.onPlayerExpand()
 
-   ' When the player is collapsed from fullscreen
+   ' When the player is collapsed to a smaller size
    adapter.onPlayerCollapse()
    ```
 
