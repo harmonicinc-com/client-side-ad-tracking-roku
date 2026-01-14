@@ -174,7 +174,7 @@
     m.top.video.unobserveFieldScoped("state")
    ```
 
-8. (Optional) Handle player operation events. If your ad metadata includes tracking events for mute, unmute, pause, and resume, call the corresponding adapter methods when these player events occur:
+8. (Optional) Handle player operation events. If your ad metadata includes tracking events for player operations, call the corresponding adapter methods when these player events occur:
    ```
    ' When the player is muted
    adapter.onMute()
@@ -187,11 +187,23 @@
 
    ' When the player is resumed
    adapter.onResume()
+
+   ' When the user rewinds
+   adapter.onRewind()
+
+   ' When the user skips an ad
+   adapter.onSkip()
+
+   ' When the player is expanded to a larger size
+   adapter.onPlayerExpand()
+
+   ' When the player is collapsed to a smaller size
+   adapter.onPlayerCollapse()
    ```
 
    These methods will fire the appropriate beacons for the currently playing ad. The beacons are only fired if:
    - An ad is currently playing
-   - The ad metadata contains tracking events with the corresponding `event` value (e.g., "mute", "unmute", "pause", "resume")
+   - The ad metadata contains tracking events with the corresponding `event` value (e.g., "mute", "unmute", "pause", "resume", "rewind", "skip", "playerExpand", "playerCollapse")
 
 ## Development
 ### Example app tryout

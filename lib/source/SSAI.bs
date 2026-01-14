@@ -499,6 +499,38 @@ class RAFX_SSAI
         m.playerInitiatedBeaconHandler.fireBeaconsByType("resume", m.rafMetadata.adBreaks, playerPosition)
     end sub
 
+    ' Fire beacons when player rewinds
+    ' Should be called by the app when the user rewinds
+    sub onRewind()
+        if not m.adsInProgress then return
+        playerPosition = m.player?.sgNode?.position ?? 0
+        m.playerInitiatedBeaconHandler.fireBeaconsByType("rewind", m.rafMetadata.adBreaks, playerPosition)
+    end sub
+
+    ' Fire beacons when ad is skipped
+    ' Should be called by the app when the user skips an ad
+    sub onSkip()
+        if not m.adsInProgress then return
+        playerPosition = m.player?.sgNode?.position ?? 0
+        m.playerInitiatedBeaconHandler.fireBeaconsByType("skip", m.rafMetadata.adBreaks, playerPosition)
+    end sub
+
+    ' Fire beacons when player is expanded to a larger size
+    ' Should be called by the app when the player enters a larger size
+    sub onPlayerExpand()
+        if not m.adsInProgress then return
+        playerPosition = m.player?.sgNode?.position ?? 0
+        m.playerInitiatedBeaconHandler.fireBeaconsByType("playerExpand", m.rafMetadata.adBreaks, playerPosition)
+    end sub
+
+    ' Fire beacons when player is collapsed from a larger size
+    ' Should be called by the app when the player exits a larger size
+    sub onPlayerCollapse()
+        if not m.adsInProgress then return
+        playerPosition = m.player?.sgNode?.position ?? 0
+        m.playerInitiatedBeaconHandler.fireBeaconsByType("playerCollapse", m.rafMetadata.adBreaks, playerPosition)
+    end sub
+
     private sub onMetadata(msg as object)
         ' WIP
     end sub
